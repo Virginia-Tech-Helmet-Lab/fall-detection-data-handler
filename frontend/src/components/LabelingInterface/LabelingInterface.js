@@ -4,10 +4,13 @@ import VideoPlayer from './VideoPlayer';
 import BoundingBoxTool from './BoundingBoxTool';
 import AnnotationPanel from './AnnotationPanel';
 import './LabelingInterface.css';
+import { useNavigate } from 'react-router-dom';
+import { FaClipboardCheck } from 'react-icons/fa';
 
 const LabelingInterface = () => {
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [boundingBoxes, setBoundingBoxes] = useState([]);
+    const [temporalAnnotations, setTemporalAnnotations] = useState([]);
     const [currentTime, setCurrentTime] = useState(0);
     const [currentFrame, setCurrentFrame] = useState(0);
     const [frameRate, setFrameRate] = useState(30);
@@ -24,11 +27,33 @@ const LabelingInterface = () => {
     const videoDisplayWidth = 640;
     const videoDisplayHeight = 480;
     
+    // Add navigate hook
+    const navigate = useNavigate();
+    
+    // Add this to existing state
+    const [hasAnnotations, setHasAnnotations] = useState(false);
+    
+    // Add this effect to check if annotations exist
+    useEffect(() => {
+        if (selectedVideo && 
+            (temporalAnnotations.length > 0 || boundingBoxes.length > 0)) {
+            setHasAnnotations(true);
+        } else {
+            setHasAnnotations(false);
+        }
+    }, [selectedVideo, temporalAnnotations, boundingBoxes]);
+    
     const handleVideoSelect = (video) => {
         setSelectedVideo(video);
         setBoundingBoxes([]);
+        setTemporalAnnotations([]);
         setBoundingBoxActive(false);
         setSelectedLabel('');
+        
+        // Fetch temporal annotations for the selected video
+        if (video && video.video_id) {
+            fetchTemporalAnnotations(video.video_id);
+        }
     };
     
     const handleBoxesUpdate = (boxes) => {
@@ -50,6 +75,27 @@ const LabelingInterface = () => {
         console.log("Bounding box activated:", isActive, label);
         setBoundingBoxActive(isActive);
         setSelectedLabel(label);
+    };
+    
+    // Add this function to handle transition to review
+    const handleReviewTransition = () => {
+        if (window.confirm('Are you ready to review your annotations? You can still return to edit them later.')) {
+            navigate('/review');
+        }
+    };
+    
+    // Add this function to fetch temporal annotations
+    const fetchTemporalAnnotations = async (videoId) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/annotations/${videoId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setTemporalAnnotations(data);
+            }
+        } catch (error) {
+            console.error('Error fetching temporal annotations:', error);
+            setTemporalAnnotations([]);
+        }
     };
     
     return (
@@ -94,6 +140,15 @@ const LabelingInterface = () => {
                     <p>No video selected.</p>
                 )}
             </div>
+            {hasAnnotations && (
+                <button 
+                    className="floating-review-button"
+                    onClick={handleReviewTransition}
+                    title="Review your annotations"
+                >
+                    <FaClipboardCheck /> Review
+                </button>
+            )}
         </div>
     );
 };

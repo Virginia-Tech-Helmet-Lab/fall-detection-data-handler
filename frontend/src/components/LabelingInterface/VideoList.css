@@ -11,6 +11,7 @@
 
 .video-item {
     margin-bottom: 8px;
+    
 }
 
 .video-item button {
@@ -33,6 +34,7 @@
     margin-bottom: 5px;
     word-break: break-word;
     color: var(--vt-chicago-maroon);
+    font-size: 1rem;
 }
 
 .video-specs {

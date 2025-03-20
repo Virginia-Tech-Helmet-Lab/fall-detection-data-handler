@@ -1,49 +1,29 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './DataImport.css';
 
+// Import source-specific components
+import LocalFileImport from './LocalFileImport';
+import GoogleDriveImport from './GoogleDriveImport';
+import DropboxImport from './DropboxImport';
+import UrlImport from './UrlImport';
+
 const DataImport = () => {
-    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [activeTab, setActiveTab] = useState('local');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
 
-    const handleFileChange = (e) => {
-        setSelectedFiles(e.target.files);
-        setMessage(`${e.target.files.length} file(s) selected`);
+    // Common success handler for all import methods
+    const handleImportSuccess = () => {
+        setMessage('Upload successful! Redirecting to normalization...');
+        setTimeout(() => navigate('/normalize'), 2000);
     };
 
-    const handleUpload = async () => {
-        if (!selectedFiles || selectedFiles.length === 0) {
-            setMessage('Please select files first');
-            return;
-        }
-
-        setLoading(true);
-        setMessage('Uploading...');
-        
-        const formData = new FormData();
-        Array.from(selectedFiles).forEach(file => {
-            formData.append('files', file);
-        });
-        
-        try {
-            console.log('Sending upload request to backend...');
-            const response = await axios.post('http://localhost:5000/api/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            console.log('Upload response:', response.data);
-            setMessage('Upload successful! Redirecting to normalization...');
-            
-            // Navigate to the normalization page after successful upload
-            setTimeout(() => navigate('/normalize'), 2000);
-        } catch(error) {
-            console.error('Upload error:', error);
-            setMessage(`Upload failed: ${error.response?.data?.message || error.message}`);
-        } finally {
-            setLoading(false);
-        }
+    // Common error handler for all import methods
+    const handleImportError = (error) => {
+        console.error('Upload error:', error);
+        setMessage(`Upload failed: ${error.response?.data?.message || error.message}`);
     };
 
     return (
@@ -51,21 +31,69 @@ const DataImport = () => {
             <h2>Fall Detection Video Upload</h2>
             <p>Select video files to upload for fall detection analysis</p>
             
-            <div className="upload-section">
-                <input 
-                    type="file" 
-                    multiple 
-                    accept="video/*" 
-                    onChange={handleFileChange} 
-                    disabled={loading}
-                />
-                <button 
-                    onClick={handleUpload} 
-                    disabled={loading || !selectedFiles.length}
-                    className="upload-button"
+            <div className="import-tabs">
+                <div 
+                    className={`tab ${activeTab === 'local' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('local')}
                 >
-                    {loading ? 'Uploading...' : 'Upload'}
-                </button>
+                    Local Files
+                </div>
+                <div 
+                    className={`tab ${activeTab === 'google-drive' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('google-drive')}
+                >
+                    Google Drive
+                </div>
+                <div 
+                    className={`tab ${activeTab === 'dropbox' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('dropbox')}
+                >
+                    Dropbox
+                </div>
+                <div 
+                    className={`tab ${activeTab === 'url' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('url')}
+                >
+                    URL Import
+                </div>
+            </div>
+            
+            <div className="tab-content">
+                {activeTab === 'local' && (
+                    <LocalFileImport 
+                        setLoading={setLoading}
+                        setMessage={setMessage}
+                        onSuccess={handleImportSuccess}
+                        onError={handleImportError}
+                    />
+                )}
+                
+                {activeTab === 'google-drive' && (
+                    <GoogleDriveImport 
+                        setLoading={setLoading}
+                        setMessage={setMessage}
+                        onSuccess={handleImportSuccess}
+                        onError={handleImportError}
+                    />
+                )}
+                
+                {activeTab === 'dropbox' && (
+                    <DropboxImport 
+                        setLoading={setLoading}
+                        setMessage={setMessage}
+                        onSuccess={handleImportSuccess}
+                        onError={handleImportError}
+                    />
+                )}
+                
+                {activeTab === 'url' && (
+                    <UrlImport 
+                        setLoading={setLoading}
+                        setMessage={setMessage}
+                        onSuccess={handleImportSuccess}
+                        onError={handleImportError}
+                    />
+                )}
             </div>
             
             {message && (
@@ -73,15 +101,6 @@ const DataImport = () => {
                     {message}
                 </div>
             )}
-            
-            <div className="file-list">
-                {selectedFiles && Array.from(selectedFiles).map((file, index) => (
-                    <div key={index} className="file-item">
-                        <span>{file.name}</span>
-                        <span>{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                    </div>
-                ))}
-            </div>
         </div>
     );
 };

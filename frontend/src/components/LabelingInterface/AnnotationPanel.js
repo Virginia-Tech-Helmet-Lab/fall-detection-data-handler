@@ -230,7 +230,6 @@ const AnnotationPanel = forwardRef(({
 
   return (
     <div className="annotation-panel">
-      <h2>Annotation Panel</h2>
       
       {/* Current Frame/Time Information */}
       <div className="current-frame-info">

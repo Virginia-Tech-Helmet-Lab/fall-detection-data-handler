@@ -1,0 +1,126 @@
+.google-drive-import {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 30px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.drive-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.drive-search {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.refresh-button {
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+.drive-files-list {
+    border: 1px solid #eee;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.no-files {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.drive-file-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.drive-file-item:last-child {
+    border-bottom: none;
+}
+
+.drive-file-item:hover {
+    background-color: #f5f5f5;
+}
+
+.drive-file-item.selected {
+    background-color: #e8f5e9;
+}
+
+.file-icon {
+    width: 60px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e1f5fe;
+    color: #0288d1;
+    margin-right: 15px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.file-thumbnail {
+    width: 60px;
+    height: 45px;
+    object-fit: cover;
+    margin-right: 15px;
+    border-radius: 4px;
+}
+
+.file-details {
+    flex-grow: 1;
+}
+
+.import-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.google-auth-button {
+    background-color: #4285F4;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.import-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.import-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
