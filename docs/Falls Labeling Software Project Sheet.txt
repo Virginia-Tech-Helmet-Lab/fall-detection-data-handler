@@ -1,0 +1,140 @@
+﻿1. Project Summary
+Project Name: Fall Detection Data Preprocessor and Annotator
+Objective:
+ Build a comprehensive, user-friendly software tool that enables researchers to import, normalize, and annotate videos for fall detection. The system will handle variable-length videos, support normalization, and provide detailed labeling (temporal and bounding box) to generate high-quality training data for deep learning models.
+End Goal:
+ A fully integrated web application (or desktop app) that lets users process a batch of videos, annotate fall events (and key body parts), review annotations, and then export the annotated dataset for further model training and research.
+________________
+
+
+2. Project Scope
+* Frontend:
+ A responsive UI with multiple views:
+
+   * Data Import & Metadata Extraction
+   * Normalization Controls & Preview
+   * Labeling Interface: A three-panel layout with video playback, annotation controls (temporal and bounding box), and progress tracking.
+   * Final Review Dashboard for validating and editing annotations.
+   * Backend:
+ RESTful API services to handle:
+
+      * Video uploads and storage.
+      * Video normalization processing (using libraries like FFmpeg).
+      * CRUD operations for annotations and session management.
+      * Data persistence in a database (PostgreSQL or MongoDB).
+      * Integration & Deployment:
+ Seamless integration between the frontend and backend, a robust CI/CD pipeline, and deployment on cloud services or as a standalone application.
+
+________________
+
+
+3. Project Phases and Milestones
+Phase 1: Planning & Setup
+         * Task 1.1: Finalize technical specifications and confirm architecture design with all stakeholders.
+         * Task 1.2: Set up the repository with the proposed high-level structure.
+         * Task 1.3: Establish development and testing environments.
+Milestone:
+ Repository initialized with basic structure and approved architecture.
+________________
+
+
+Phase 2: Core Backend Development
+         * Task 2.1: Develop initial data models (video metadata, temporal annotations, bounding box annotations).
+         * Task 2.2: Implement primary API endpoints:
+         * /upload for video file imports.
+         * /normalize to trigger video normalization.
+         * /annotations for managing annotations.
+         * Task 2.3: Set up file storage and database connectivity.
+Milestone:
+ Backend core functionalities are implemented with initial endpoints and basic unit tests.
+________________
+
+
+Phase 3: Frontend Foundation
+         * Task 3.1: Set up the frontend project (React/Vue.js) with routing and state management.
+         * Task 3.2: Develop the Data Import Component:
+         * File upload interface.
+         * Metadata extraction and display.
+         * Task 3.3: Integrate basic communication with the backend for video uploads.
+Milestone:
+ Frontend initialized and integrated with the backend for data import.
+________________
+
+
+Phase 4: Normalization Module
+         * Task 4.1: Build the Normalization UI:
+         * Sliders, checkboxes, and preview panels for resolution, framerate, and brightness/contrast.
+         * Task 4.2: Implement backend normalization logic and integrate with the UI.
+         * Task 4.3: Ensure normalization settings are saved and applied to videos.
+Milestone:
+ A fully functional normalization module, including UI preview and backend processing.
+________________
+
+
+Phase 5: Labeling Interface Development
+         * Task 5.1: Create the three-panel Labeling Interface:
+         * Left Panel: Video list with progress tracking.
+         * Center Panel: Custom video player with scrubbing, play/pause, and frame-by-frame controls.
+         * Right Panel: Annotation tools for marking temporal boundaries and drawing bounding boxes.
+         * Task 5.2: Develop the Bounding Box Tool:
+         * Drawing, resizing, and labeling (e.g., head, shoulder) directly on the video frames.
+         * Task 5.3: Implement auto-save functionality for annotations and update UI accordingly.
+Milestone:
+ The full labeling interface is operational, with smooth video playback and annotation capabilities.
+________________
+
+
+Phase 6: Final Review & Batch Processing
+         * Task 6.1: Develop the Final Review Dashboard to display annotated videos.
+         * Task 6.2: Allow users to edit or confirm annotations.
+         * Task 6.3: Implement batch processing logic to manage sessions and prepare the final output.
+Milestone:
+ Final review interface completed and batch processing workflow is in place.
+________________
+
+
+Phase 7: Testing, QA, and Deployment
+         * Task 7.1: Conduct unit, integration, and user acceptance testing across both frontend and backend.
+         * Task 7.2: Address bugs and iterate based on feedback.
+         * Task 7.3: Prepare deployment scripts and documentation (CI/CD pipeline, Docker, cloud deployment).
+         * Task 7.4: Deploy to a staging environment for final validation.
+Milestone:
+ Project passes QA, is deployed to staging/production, and documentation is complete.
+________________
+
+
+Phase 8: Post-Launch & Maintenance
+         * Task 8.1: Monitor performance and gather user feedback.
+         * Task 8.2: Plan for future enhancements (e.g., automated fall detection pre-labeling, multi-user collaboration).
+         * Task 8.3: Provide ongoing support and iterate on the product.
+Milestone:
+ Project is successfully in production, with a clear plan for updates and enhancements.
+________________
+
+
+4. Project Timeline (Sample Estimate)
+         * Phase 1: Planning & Setup: 1–2 weeks
+         * Phase 2: Core Backend Development: 3–4 weeks
+         * Phase 3: Frontend Foundation: 2–3 weeks
+         * Phase 4: Normalization Module: 2–3 weeks
+         * Phase 5: Labeling Interface Development: 4–6 weeks
+         * Phase 6: Final Review & Batch Processing: 2–3 weeks
+         * Phase 7: Testing, QA, and Deployment: 2–3 weeks
+         * Phase 8: Post-Launch & Maintenance: Ongoing
+________________
+
+
+5. Deliverables
+         * Repository: Fully structured with backend and frontend components.
+         * API Endpoints: Fully functional endpoints for file upload, normalization, annotation management, and review.
+         * UI Components: Data import, normalization, labeling, and review dashboards.
+         * Documentation: Comprehensive technical and user documentation in the docs/ folder.
+         * Testing Suite: Automated tests for both frontend and backend.
+         * Deployment: Deployed version (or Docker image) with CI/CD pipeline scripts.
+         * Final Report: A post-launch report outlining system performance, user feedback, and future recommendations.
+________________
+
+
+6. Conclusion
+From a project management perspective, the repository begins with a clear definition of both the repository structure and the initial setup (Phase 1). Development progresses through backend and frontend foundational work (Phases 2 and 3), followed by the core functionalities—normalization, labeling interface, and final review (Phases 4 to 6). Testing and deployment wrap up the project (Phase 7), and a maintenance plan is established (Phase 8). This complete project overview ensures a structured, phased approach that aligns with the technical spec while keeping the end-user experience and research objectives in clear focus.
+This roadmap provides the engineering team with a clear starting point and end-goal, ensuring that every component—from the initial repository setup to the final product—is systematically built, tested, and deployed.

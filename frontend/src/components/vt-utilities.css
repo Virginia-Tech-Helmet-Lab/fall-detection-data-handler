@@ -1,0 +1,24 @@
+@import './vt-theme.css';
+
+/* Background colors */
+.vt-bg-primary { background-color: var(--vt-bg-primary); }
+.vt-bg-secondary { background-color: var(--vt-bg-secondary); }
+.vt-bg-maroon { background-color: var(--vt-chicago-maroon); }
+.vt-bg-orange { background-color: var(--vt-burnt-orange); }
+
+/* Text colors */
+.vt-text-primary { color: var(--vt-text-primary); }
+.vt-text-secondary { color: var(--vt-text-secondary); }
+.vt-text-white { color: var(--vt-text-on-dark); }
+.vt-text-maroon { color: var(--vt-chicago-maroon); }
+
+/* Button variants */
+.vt-btn-primary {
+  background-color: var(--vt-chicago-maroon);
+  color: var(--vt-text-on-dark);
+}
+
+.vt-btn-secondary {
+  background-color: var(--vt-burnt-orange);
+  color: var(--vt-text-on-dark);
+}

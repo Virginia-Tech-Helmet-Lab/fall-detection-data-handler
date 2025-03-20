@@ -1,0 +1,79 @@
+/* Docking bar for navigation */
+.docking-bar {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  background-color: var(--vt-chicago-maroon);
+  color: var(--vt-text-on-dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  font-family: "Acherus Grotesque", Arial, sans-serif;
+}
+
+.docking-bar-top {
+  display: flex;
+  align-items: center;
+  padding: 0.7rem 1rem;
+}
+
+.app-logo {
+  height: 60px;
+  margin-right: 1.5rem;
+}
+
+.app-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0;
+  flex-grow: 1;
+  color: var(--vt-text-on-dark);
+  letter-spacing: -0.02em; /* Slightly tighter tracking for Acherus Grotesque */
+  line-height: 1.2; /* Improved leading */
+}
+
+.navigation-tabs {
+  display: flex;
+  background-color: var(--vt-bg-primary);
+  border-bottom: 1px solid var(--vt-border-light);
+}
+
+.nav-tab {
+  padding: 0.8rem 1.5rem;
+  color: var(--vt-text-primary);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  letter-spacing: -0.01em; /* Slightly tighter tracking */
+  font-size: 1rem;
+}
+
+.nav-tab:hover {
+  background-color: rgba(232, 119, 34, 0.1); /* Light burnt orange */
+  border-bottom-color: var(--vt-burnt-orange);
+}
+
+.nav-tab.active {
+  color: var(--vt-chicago-maroon);
+  font-weight: bold;
+  border-bottom-color: var(--vt-chicago-maroon);
+}
+
+/* For mobile devices */
+@media (max-width: 768px) {
+  .navigation-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  .nav-tab {
+    padding: 0.8rem 1rem;
+  }
+  
+  .app-title {
+    font-size: 1.5rem; /* Slightly smaller on mobile */
+  }
+}

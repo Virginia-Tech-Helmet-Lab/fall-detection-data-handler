@@ -1,0 +1,45 @@
+:root {
+  /* Virginia Tech Color Palette */
+
+  /* Primary Colors */
+  --vt-chicago-maroon: #861F41; /* Primary brand color */
+  --vt-burnt-orange: #E87722;   /* Primary brand color */
+  --vt-yardline-white: #FFFFFF; /* Neutral */
+  --vt-hokie-stone: #75787B;    /* Neutral */
+
+  /* Secondary Colors */
+  --vt-impact-orange: #FF6600;  /* Digital text accessible alternative to burnt orange */
+  --vt-prairie-fire: #C64600;  
+  --vt-clark-hall: #4D4E4C;
+  --vt-lane-hall: #231F20;
+  --vt-grove-green: #008542;
+  --vt-duck-pond-blue: #005A8B;
+  --vt-innovate-blue: #00A5E5;
+  --vt-limestone: #EFEEEE;
+
+  /* UI Feedback Colors */
+  --vt-success: #008542;       /* Grove green repurposed for success */
+  --vt-error: #861F41;         /* Chicago maroon repurposed for errors/alerts */
+  --vt-warning: #E87722;       /* Burnt orange repurposed for warnings */
+  --vt-info: #00A5E5;          /* Innovate blue repurposed for information */
+
+  /* Shades and Tints */
+  --vt-maroon-dark: #6B182F;    /* Darkened Chicago maroon */
+  --vt-orange-dark: #C46618;    /* Darkened burnt orange */
+
+  /* Background colors */
+  --vt-bg-primary: #FFFFFF;
+  --vt-bg-secondary: #F5F5F5;
+  --vt-bg-tertiary: #EFEEEE;    /* Limestone */
+
+  /* Text colors */
+  --vt-text-primary: #231F20;   /* Lane Hall */
+  --vt-text-secondary: #4D4E4C; /* Clark Hall */
+  --vt-text-tertiary: #75787B;  /* Hokie Stone */
+  --vt-text-on-dark: #FFFFFF;   /* Yardline White */
+
+  /* Border colors */
+  --vt-border-light: #EFEEEE;   /* Limestone */
+  --vt-border-medium: #D0D0D0;
+  --vt-border-dark: #75787B;    /* Hokie Stone */
+}

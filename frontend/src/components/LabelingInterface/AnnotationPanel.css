@@ -1,0 +1,349 @@
+/* AnnotationPanel.css */
+.annotation-panel-container {
+    padding: 15px;
+    background-color: var(--vt-bg-secondary);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.annotation-panel-container h2 {
+    margin-top: 0;
+    border-bottom: 2px solid var(--vt-border-light);
+    padding-bottom: 10px;
+    color: var(--vt-chicago-maroon);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--vt-text-secondary);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--vt-border-medium);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--vt-duck-pond-blue);
+    outline: none;
+    box-shadow: 0 0 4px rgba(0, 90, 139, 0.3);
+}
+
+.time-inputs {
+    display: flex;
+    gap: 10px;
+}
+
+.time-inputs .form-group {
+    flex: 1;
+}
+
+.save-button {
+    background-color: var(--vt-chicago-maroon);
+    color: var(--vt-text-on-dark);
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    margin-top: 10px;
+    transition: background-color 0.2s;
+}
+
+.save-button:hover {
+    background-color: var(--vt-maroon-dark);
+}
+
+.save-button:disabled {
+    background-color: var(--vt-border-medium);
+    cursor: not-allowed;
+}
+
+.status-message {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.status-message.success {
+    background-color: rgba(0, 133, 66, 0.1);
+    color: var(--vt-success);
+    border-left: 4px solid var(--vt-success);
+}
+
+.status-message.error {
+    background-color: rgba(134, 31, 65, 0.1);
+    color: var(--vt-error);
+    border-left: 4px solid var(--vt-error);
+}
+
+.annotations-list {
+    margin-top: 25px;
+}
+
+.annotations-list h3 {
+    border-bottom: 1px solid var(--vt-border-light);
+    padding-bottom: 5px;
+    font-size: 16px;
+    color: var(--vt-text-secondary);
+}
+
+.no-annotations {
+    color: var(--vt-text-tertiary);
+    font-style: italic;
+    text-align: center;
+    margin-top: 10px;
+    padding: 15px;
+    background-color: var(--vt-bg-secondary);
+    border-radius: 4px;
+}
+
+.annotation-item {
+    background-color: var(--vt-bg-secondary);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid var(--vt-duck-pond-blue);
+}
+
+.annotation-time {
+    font-weight: bold;
+}
+
+.annotation-label {
+    background-color: var(--vt-duck-pond-blue);
+    color: var(--vt-text-on-dark);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.annotation-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.delete-button {
+    background-color: var(--vt-error);
+    color: var(--vt-text-on-dark);
+    border: none;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.delete-button:hover {
+    background-color: var(--vt-maroon-dark);
+}
+
+/* New styles for frame marking */
+.current-frame-info {
+    background-color: var(--vt-bg-secondary);
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.frame-indicator {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    border-radius: 4px;
+    background-color: var(--vt-bg-tertiary);
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.frame-indicator.start-frame {
+    background-color: rgba(0, 133, 66, 0.1); /* Light green */
+    border-left: 4px solid var(--vt-grove-green);
+}
+
+.frame-indicator.end-frame {
+    background-color: rgba(232, 119, 34, 0.1); /* Light orange */
+    border-left: 4px solid var(--vt-burnt-orange);
+}
+
+.frame-indicator.in-range {
+    background-color: rgba(0, 90, 139, 0.1); /* Light blue */
+    border-left: 4px solid var(--vt-duck-pond-blue);
+}
+
+.frame-indicator.annotated {
+    background-color: rgba(134, 31, 65, 0.1); /* Light maroon */
+    border-left: 4px solid var(--vt-chicago-maroon);
+}
+
+.frame-marking-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.mark-start-btn, .mark-end-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.mark-start-btn {
+    background-color: var(--vt-grove-green);
+    color: var(--vt-text-on-dark);
+}
+
+.mark-start-btn:hover {
+    background-color: #006e36; /* Darker Grove Green */
+}
+
+.mark-end-btn {
+    background-color: var(--vt-burnt-orange);
+    color: var(--vt-text-on-dark);
+}
+
+.mark-end-btn:hover {
+    background-color: var(--vt-orange-dark);
+}
+
+.mark-start-btn:disabled, .mark-end-btn:disabled {
+    background-color: var(--vt-border-medium);
+    color: var(--vt-text-tertiary);
+    cursor: not-allowed;
+}
+
+.input-with-info {
+    position: relative;
+}
+
+.frame-info {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    color: var(--vt-text-tertiary);
+    background-color: var(--vt-bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.annotation-frames {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--vt-text-tertiary);
+    margin-top: 2px;
+}
+
+.annotation-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.annotation-panel {
+    height: 100%;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.tab-navigation {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.tab-navigation button {
+    flex: 1;
+    padding: 10px;
+    background: var(--vt-bg-tertiary);
+    border: 1px solid var(--vt-border-medium);
+    cursor: pointer;
+}
+
+.tab-navigation button.active {
+    background: var(--vt-chicago-maroon);
+    color: var(--vt-text-on-dark);
+    border-color: var(--vt-chicago-maroon);
+}
+
+.time-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.control-button {
+    flex: 1;
+    padding: 8px;
+    background: var(--vt-bg-tertiary);
+    border: 1px solid var(--vt-border-medium);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.bbox-button {
+    width: 100%;
+    padding: 10px;
+    background: var(--vt-duck-pond-blue);
+    color: var(--vt-text-on-dark);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.bbox-button.active {
+    background: var(--vt-error);
+}
+
+.bbox-instructions {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(232, 119, 34, 0.1);
+    border: 1px solid var(--vt-burnt-orange);
+    border-radius: 4px;
+}
+
+.annotation-list {
+    list-style: none;
+    padding: 0;
+}
+
+.annotation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.delete-button {
+    padding: 5px 10px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+h3 {
+    margin: 15px 0 10px 0;
+}

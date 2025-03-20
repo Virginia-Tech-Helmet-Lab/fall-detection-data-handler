@@ -1,0 +1,65 @@
+/* Import the VT theme variables */
+@import './vt-theme.css';
+
+/* Global element styling */
+body {
+  font-family: "Acherus Grotesque", Arial, sans-serif;
+  color: var(--vt-text-primary);
+  background-color: var(--vt-bg-primary);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--vt-chicago-maroon);
+}
+
+a {
+  color: var(--vt-duck-pond-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--vt-innovate-blue);
+}
+
+/* Common button styles */
+button {
+  border-radius: 4px;
+  padding: 8px 15px;
+  transition: background-color 0.2s;
+}
+
+button:disabled {
+  background-color: var(--vt-border-medium);
+  color: var(--vt-text-tertiary);
+  cursor: not-allowed;
+}
+
+/* Adjust for docking bar */
+.main-content {
+  padding: 1.5rem;
+  margin-top: 0; /* The docking bar is sticky, so no need for margin */
+}
+
+/* For creating consistent page layouts */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Virginia Tech branded page headers */
+.page-header {
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--vt-border-light);
+  padding-bottom: 0.5rem;
+}
+
+.page-header h1 {
+  color: var(--vt-chicago-maroon);
+  margin-bottom: 0.5rem;
+}
+
+.page-header p {
+  color: var(--vt-text-secondary);
+  margin-top: 0;
+}

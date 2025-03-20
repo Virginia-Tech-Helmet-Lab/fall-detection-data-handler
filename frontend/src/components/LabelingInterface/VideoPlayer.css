@@ -1,0 +1,467 @@
+/* VideoPlayer.css */
+.video-player-container {
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 800px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.video-wrapper {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 15px;
+  background-color: #000;
+  border-radius: 4px;
+  user-select: none;
+  min-height: 200px;
+}
+
+.video-element {
+  width: 100%;
+  display: block;
+  z-index: 1;
+}
+
+.control-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.video-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #e0e0e0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.time-display {
+  font-family: monospace;
+  font-size: 1.1rem;
+}
+
+.slider-control {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.slider-control label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.slider-control input {
+  width: 100%;
+}
+
+.zoom-value {
+  margin-left: 8px;
+  color: #555;
+}
+
+.speed-value {
+  margin-left: 8px;
+  color: #555;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 15px;
+  border-radius: 4px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.frame-filmstrip {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin: 10px 0;
+  background-color: #333;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  min-height: 80px;
+}
+
+.frame-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background-color: #000;
+  border: 1px solid var(--vt-border-medium);
+}
+
+.filmstrip-frame {
+  width: 80px;
+  height: 60px;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #222;
+  border: 1px solid var(--vt-border-medium);
+}
+
+.frame-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 14px;
+  color: var(--vt-text-on-dark);
+}
+
+.filmstrip-frame.current-frame {
+  border: 2px solid var(--vt-chicago-maroon);
+  box-shadow: 0 0 8px rgba(134, 31, 65, 0.6);
+}
+
+.prev-frame, .next-frame {
+  background-color: #424242;
+}
+
+.frame-selector-toggle {
+  margin: 10px 0;
+  text-align: center;
+}
+
+.toggle-button {
+  background-color: #333;
+  color: var(--vt-text-on-dark);
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+}
+
+.toggle-button:hover {
+  background-color: #444;
+}
+
+.toggle-button.active {
+  background-color: var(--vt-chicago-maroon);
+}
+
+/* Add this class that only applies when zoom level > 1 */
+.video-wrapper.zoomable {
+  cursor: grab;
+}
+
+.video-wrapper.dragging {
+  cursor: grabbing !important;
+}
+
+/* Update video-zoom-container to be a clip mask */
+.video-zoom-container {
+  position: relative;
+  width: 100%;
+  height: calc(100% - 40px); /* Leave room for controls */
+  overflow: hidden;
+}
+
+/* Create a content wrapper that gets zoomed */
+.video-content {
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  overflow: hidden;
+}
+
+/* Add styles for the controls container */
+.controls-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background-color: #3a3a3a; /* Solid color instead of semi-transparent */
+  z-index: 10; /* Higher z-index to ensure visibility */
+}
+
+/* Replace the current control visibility rules with these more specific ones */
+.controls-container video::-webkit-media-controls-panel {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transition: none !important;
+}
+
+/* Add this class to the control video element */
+.control-video-element {
+  width: 100%;
+  height: 40px;
+  object-fit: cover;
+  background-color: transparent;
+}
+
+/* Add this to force controls to be visible */
+.always-show-controls {
+  opacity: 1 !important;
+}
+
+/* Force browser-specific controls to remain visible */
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-volume-slider-container,
+video::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-mute-button,
+video::-webkit-media-controls-timeline,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-fullscreen-button,
+video::-webkit-media-controls-rewind-button,
+video::-webkit-media-controls-seek-back-button,
+video::-webkit-media-controls-seek-forward-button,
+video::-webkit-media-controls-toggle-closed-captions-button,
+video::-webkit-media-controls-timeline-container {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+}
+
+/* Replace the current controls container styling with this more complete version */
+.controls-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background-color: #3a3a3a;
+  z-index: 10;
+  overflow: visible; /* Let controls overflow if needed */
+}
+
+/* Add these browser-specific rules to force controls visibility */
+.control-video-element::-webkit-media-controls-panel {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+}
+
+.control-video-element::-webkit-media-controls {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+}
+
+/* Firefox specific */
+.control-video-element::-moz-media-controls {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+}
+
+/* MS Edge specific */
+.control-video-element::-ms-media-controls {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+}
+
+/* Force the video to have a visible UI */
+.custom-controls-always-visible {
+  opacity: 1 !important;
+  z-index: 100;
+}
+
+/* Add simple custom controls styling */
+.custom-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background-color: #3a3a3a;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  z-index: 20;
+}
+
+.play-pause-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  margin-right: 10px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-container {
+  flex: 1;
+  height: 8px;
+  background-color: #555;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  margin: 0 10px;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: #2196f3;
+  border-radius: 4px;
+}
+
+.time-display-custom {
+  color: white;
+  font-family: monospace;
+  margin-left: 10px;
+  font-size: 0.8rem;
+}
+
+/* Adjust the custom controls to prevent cutoff */
+.custom-controls {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  background-color: #3a3a3a;
+  display: flex;
+  align-items: center;
+  padding: 0 15px; /* Increased padding on both sides */
+  box-sizing: border-box;
+}
+
+.play-pause-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  margin-right: 15px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevent button from shrinking */
+}
+
+.progress-container {
+  flex: 1;
+  height: 8px;
+  background-color: #555;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  margin: 0 15px 0 0; /* Added right margin to separate from timestamp */
+  min-width: 100px; /* Ensure minimum width */
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: #2196f3;
+  border-radius: 4px;
+}
+
+.time-display-custom {
+  color: white;
+  font-family: monospace;
+  font-size: 0.8rem;
+  white-space: nowrap; /* Prevent wrapping */
+  flex-shrink: 0; /* Prevent the timestamp from shrinking */
+  min-width: 110px; /* Give enough space for the timestamp */
+  text-align: right;
+}
+
+/* Add styles for thumbnail error state */
+.thumbnail-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background-color: #333;
+  color: var(--vt-error);
+  font-size: 10px;
+  text-align: center;
+  font-weight: bold;
+  text-shadow: 0 0 2px black;
+}
+
+/* Add loading indicator styling */
+.thumbnail-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background-color: #333;
+  color: var(--vt-text-on-dark);
+  animation: pulse 1.5s infinite ease-in-out;
+  font-size: 12px;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Make the frame filmstrip more visible */
+.frame-filmstrip {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin: 10px 0;
+  background-color: #333;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  min-height: 80px; /* Set minimum height to prevent layout shifts */
+}
+
+/* Add these rules to your CSS file */
+.frame-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background-color: #000;
+  border: 1px solid var(--vt-border-medium);
+}
+
+.filmstrip-frame {
+  width: 80px;
+  height: 60px;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #222;
+  border: 1px solid var(--vt-border-medium);
+}
+
+.filmstrip-frame.current-frame {
+  border: 2px solid var(--vt-chicago-maroon);
+  box-shadow: 0 0 8px rgba(134, 31, 65, 0.6);
+}
+
+/* Remove the debug indicator */
+.filmstrip-frame::after {
+  display: none; /* Hide the debug indicator */
+}

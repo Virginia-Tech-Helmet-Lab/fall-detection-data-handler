@@ -1,0 +1,628 @@
+from flask import Blueprint, request, jsonify, current_app, send_from_directory, Response, send_file
+from .services.normalization import normalize_video, generate_preview
+from .services.annotation import get_annotations, save_annotation
+from .models import Video, db
+from .utils.video_processing import save_file, extract_metadata, ensure_browser_compatible, extract_video_frame
+import os
+from werkzeug.utils import secure_filename
+import time
+from urllib.parse import unquote
+import numpy as np
+import cv2
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+import traceback
+import io
+import sys
+from flask_cors import CORS
+from .blueprints import api_bp, api_routes_registered
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Add this function to check for allowed file extensions
+def allowed_file(filename):
+    ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'wmv', 'mkv'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Guard against duplicate registration
+if not api_routes_registered:
+    @api_bp.route('/upload', methods=['POST'])
+    def upload_video():
+        if 'files' not in request.files:
+            return jsonify({'error': 'No files part in the request'}), 400
+        
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            return jsonify({'error': 'No files selected'}), 400
+        
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        results = []
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(upload_folder, filename)
+                file.save(filepath)
+                
+                # Generate web-compatible version
+                web_filename = ensure_browser_compatible(filename)
+                
+                # Extract metadata
+                try:
+                    metadata = extract_metadata(filepath)
+                except Exception as e:
+                    metadata = {
+                        'resolution': 'unknown',
+                        'width': 0,
+                        'height': 0,
+                        'framerate': 0,
+                        'duration': 0
+                    }
+                    
+                # Save to database
+                video = Video(
+                    filename=web_filename,  # Use web-compatible filename
+                    resolution=metadata.get('resolution', 'unknown'),
+                    framerate=metadata.get('framerate', 0),
+                    duration=metadata.get('duration', 0)
+                )
+                db.session.add(video)
+                
+                results.append({
+                    'filename': web_filename,
+                    'status': 'success',
+                    'metadata': metadata
+                })
+            else:
+                results.append({
+                    'filename': file.filename if file else 'unknown',
+                    'status': 'error',
+                    'message': 'Invalid file type'
+                })
+        
+        db.session.commit()
+        return jsonify({'uploaded': results})
+
+    # Existing endpoints remain...
+
+    @api_bp.route('/videos', methods=['GET'])
+    def list_videos():
+        # For now, return all videos; later filter out videos that are fully annotated.
+        videos = Video.query.all()
+        video_list = [{
+           "video_id": video.video_id,
+           "filename": video.filename,
+           "resolution": video.resolution,
+           "framerate": video.framerate,
+           "duration": video.duration
+        } for video in videos]
+        return jsonify(video_list)
+
+    @api_bp.route('/export', methods=['GET'])
+    def export_annotations():
+        # Export all annotations (both temporal and bounding boxes) as JSON.
+        from .models import TemporalAnnotation, BoundingBoxAnnotation
+        temporal_annotations = TemporalAnnotation.query.all()
+        bbox_annotations = BoundingBoxAnnotation.query.all()
+        export_data = {
+            "temporal_annotations": [{
+                "annotation_id": a.annotation_id,
+                "video_id": a.video_id,
+                "start_time": a.start_time,
+                "end_time": a.end_time,
+                "start_frame": a.start_frame,
+                "end_frame": a.end_frame,
+                "label": a.label
+            } for a in temporal_annotations],
+            "bounding_box_annotations": [{
+                "bbox_id": b.bbox_id,
+                "video_id": b.video_id,
+                "frame_index": b.frame_index,
+                "x": b.x,
+                "y": b.y,
+                "width": b.width,
+                "height": b.height,
+                "part_label": b.part_label
+            } for b in bbox_annotations]
+        }
+        return jsonify(export_data)
+
+    @api_bp.route('/preview-normalize', methods=['POST'])
+    def preview_normalize():
+        data = request.get_json()
+        video_id = data.get('video_id')
+        settings = data.get('settings')
+        
+        if not video_id or not settings:
+            return jsonify({'error': 'Missing video_id or settings'}), 400
+        
+        # Get the video from database
+        video = Video.query.get(video_id)
+        if not video:
+            return jsonify({'error': 'Video not found'}), 404
+        
+        try:
+            # Create a preview directory if it doesn't exist
+            preview_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'preview')
+            os.makedirs(preview_dir, exist_ok=True)
+            
+            # Create a preview version with the specified settings
+            source_path = os.path.join(current_app.config['UPLOAD_FOLDER'], video.filename)
+            preview_filename = f"preview_{video_id}_{int(time.time())}.mp4"
+            preview_path = os.path.join(preview_dir, preview_filename)
+            
+            # Use the normalization service but generate a smaller/shorter preview
+            generate_preview(source_path, preview_path, settings)
+            
+            return jsonify({'preview_filename': f'preview/{preview_filename}'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    # Add these routes to properly serve static files with correct MIME types
+    @api_bp.route('/static/<path:filename>')
+    def serve_static(filename):
+        """Serve files from the upload folder with proper MIME types"""
+        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+
+    @api_bp.route('/preview/<path:filename>')
+    def serve_preview(filename):
+        """Serve preview files from the preview subfolder"""
+        preview_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'preview')
+        return send_from_directory(preview_dir, filename)
+
+    @api_bp.route('/normalize', methods=['POST'])
+    def normalize_video_endpoint():
+        data = request.get_json()
+        video_id = data.get('video_id')
+        settings = data.get('settings')
+        
+        if not video_id or not settings:
+            return jsonify({'error': 'Missing video_id or settings'}), 400
+        
+        # Get the video from database
+        video = Video.query.get(video_id)
+        if not video:
+            return jsonify({'error': 'Video not found'}), 404
+        
+        try:
+            # Apply normalization
+            source_path = os.path.join(current_app.config['UPLOAD_FOLDER'], video.filename)
+            normalized_filename = f"norm_{video.filename}"
+            normalized_path = os.path.join(current_app.config['UPLOAD_FOLDER'], normalized_filename)
+            
+            # Use the normalization service
+            normalize_video(
+                source_path, 
+                normalized_path, 
+                resolution=settings.get('resolution', '224x224'),
+                framerate=settings.get('framerate', 30),
+                brightness=settings.get('brightness', 1.0),
+                contrast=settings.get('contrast', 1.0),
+                saturation=settings.get('saturation', 1.0)
+            )
+            
+            # Update the video record with new metadata
+            video.normalized_path = normalized_path
+            video.resolution = settings.get('resolution', '224x224') 
+            video.framerate = settings.get('framerate', 30)
+            db.session.commit()
+            
+            return jsonify({'success': True, 'normalized_filename': normalized_filename})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/normalize-all', methods=['POST'])
+    def normalize_all_videos():
+        data = request.get_json()
+        settings = data.get('settings')
+        
+        if not settings:
+            return jsonify({'error': 'Missing settings'}), 400
+        
+        # Get all videos from database
+        videos = Video.query.all()
+        if not videos:
+            return jsonify({'error': 'No videos found'}), 404
+        
+        processed_count = 0
+        errors = []
+        
+        for video in videos:
+            try:
+                # Apply normalization
+                source_path = os.path.join(current_app.config['UPLOAD_FOLDER'], video.filename)
+                normalized_filename = f"norm_{video.filename}"
+                normalized_path = os.path.join(current_app.config['UPLOAD_FOLDER'], normalized_filename)
+                
+                # Use the normalization service
+                normalize_video(
+                    source_path, 
+                    normalized_path, 
+                    resolution=settings.get('resolution', '224x224'),
+                    framerate=settings.get('framerate', 30),
+                    brightness=settings.get('brightness', 1.0),
+                    contrast=settings.get('contrast', 1.0),
+                    saturation=settings.get('saturation', 1.0)
+                )
+                
+                # Update the video record with new metadata
+                video.normalized_path = normalized_path
+                video.resolution = settings.get('resolution', '224x224') 
+                video.framerate = settings.get('framerate', 30)
+                processed_count += 1
+            except Exception as e:
+                errors.append({
+                    'video_id': video.video_id,
+                    'filename': video.filename,
+                    'error': str(e)
+                })
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'processed_count': processed_count,
+            'errors': errors
+        })
+
+    @api_bp.route('/thumbnail/<path:video_filename>/<int:frame_number>', methods=['GET'])
+    def get_thumbnail(video_filename, frame_number):
+        """API endpoint to get a specific video frame"""
+        from flask import send_file, current_app
+        import os
+        from urllib.parse import unquote
+        import io
+        import sys
+        
+        print(f">>> THUMBNAIL REQUEST: {video_filename}, frame={frame_number}", file=sys.stderr)
+        
+        try:
+            # URL decode the filename
+            video_filename = unquote(video_filename)
+            print(f">>> DECODED FILENAME: {video_filename}", file=sys.stderr)
+            
+            # Create a fallback image
+            img = np.zeros((120, 160, 3), dtype=np.uint8)
+            
+            # Try to get actual frame
+            upload_folder = current_app.config.get('UPLOAD_FOLDER')
+            video_path = os.path.join(upload_folder, video_filename)
+            print(f">>> VIDEO PATH: {video_path}", file=sys.stderr)
+            print(f">>> PATH EXISTS: {os.path.exists(video_path)}", file=sys.stderr)
+            
+            if os.path.exists(video_path):
+                # Extract video metadata to verify frame is valid
+                import cv2
+                cap = cv2.VideoCapture(video_path)
+                if cap.isOpened():
+                    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                    print(f">>> VIDEO HAS {total_frames} TOTAL FRAMES", file=sys.stderr)
+                    cap.release()
+                
+                print(f">>> CALLING extract_video_frame({video_filename}, {frame_number})", file=sys.stderr)
+                thumbnail_path = extract_video_frame(video_filename, frame_number)
+                print(f">>> RETURNED PATH: {thumbnail_path}", file=sys.stderr)
+                
+                if thumbnail_path and os.path.exists(thumbnail_path):
+                    print(f">>> PATH EXISTS: {os.path.exists(thumbnail_path)}", file=sys.stderr)
+                    print(f">>> FILE SIZE: {os.path.getsize(thumbnail_path)} bytes", file=sys.stderr)
+                    
+                    # Add CORS headers explicitly
+                    response = send_file(thumbnail_path, 
+                                   mimetype='image/jpeg',
+                                   as_attachment=False,
+                                   download_name=f"frame_{frame_number}.jpg")
+                    
+                    # Explicitly add CORS headers
+                    response.headers['Access-Control-Allow-Origin'] = '*'
+                    response.headers['Access-Control-Allow-Methods'] = 'GET'
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    
+                    print(f">>> SENDING FILE: {thumbnail_path}", file=sys.stderr)
+                    print(f">>> RESPONSE HEADERS: {response.headers}", file=sys.stderr)
+                    return response
+            
+            # For error cases, create a colored image based on the error type
+            if not os.path.exists(video_path):
+                # Red for file not found
+                img[:, :, 2] = 255
+                text = "File not found"
+            else:
+                # Green for extraction failed
+                img[:, :, 1] = 255
+                text = "Extract failed"
+                
+            cv2.putText(img, text, (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            cv2.putText(img, f"Frame {frame_number}", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+            
+        except Exception as e:
+            # Purple for exception
+            img = np.zeros((120, 160, 3), dtype=np.uint8)
+            img[:, :, 0] = 255  # Blue
+            img[:, :, 2] = 255  # Red
+            cv2.putText(img, "Error", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            cv2.putText(img, str(e)[:15], (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+        
+        # Convert image to bytes for all error cases
+        _, buffer = cv2.imencode('.jpg', img)
+        byte_io = io.BytesIO(buffer.tobytes())
+        byte_io.seek(0)
+        
+        # Return the bytes as a file
+        print("THUMBNAIL: Returning in-memory file")
+        return send_file(byte_io, 
+                       mimetype='image/jpeg',
+                       as_attachment=False,
+                       download_name=f"error_{frame_number}.jpg")
+
+    @api_bp.route('/annotations/<video_id>', methods=['GET', 'OPTIONS'])
+    def get_video_annotations(video_id):
+        if request.method == 'OPTIONS':
+            # Handle CORS preflight request
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+            return response
+        
+        # Handle GET request
+        result = get_annotations(video_id)
+        return jsonify(result)
+
+    @api_bp.route('/test-image', methods=['GET'])
+    def test_image():
+        """Simplest possible image endpoint using send_file"""
+        try:
+            # Create a simple image
+            img = np.zeros((120, 160, 3), dtype=np.uint8)
+            img[:, :, 0] = 255  # Blue
+            cv2.putText(img, "Test Image", (30, 60), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+            
+            # Convert to bytes
+            _, buffer = cv2.imencode('.jpg', img)
+            byte_io = io.BytesIO(buffer.tobytes())
+            byte_io.seek(0)
+            
+            # Send the image as a file
+            return send_file(
+                byte_io,
+                mimetype='image/jpeg',
+                as_attachment=False,
+                download_name='test.jpg'
+            )
+        except Exception as e:
+            print(f"TEST IMAGE ERROR: {str(e)}")
+            return str(e), 500
+
+    @api_bp.route('/static-test-image', methods=['GET'])
+    def static_test_image():
+        """Simplest possible endpoint - direct file serving"""
+        import os
+        
+        # Point to a real JPEG file on your system
+        test_image_path = os.path.join(os.path.dirname(__file__), 'static', 'test.jpg')
+        
+        # If you don't have an image, create one
+        if not os.path.exists(test_image_path):
+            os.makedirs(os.path.dirname(test_image_path), exist_ok=True)
+            img = np.zeros((120, 160, 3), dtype=np.uint8)
+            img[:, :, 0] = 255  # Blue image
+            cv2.putText(img, "TEST", (60, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
+            cv2.imwrite(test_image_path, img)
+        
+        # Log that we're sending this specific file
+        print(f">>> SERVING STATIC FILE: {test_image_path}", file=sys.stderr)
+        print(f">>> FILE EXISTS: {os.path.exists(test_image_path)}", file=sys.stderr)
+        print(f">>> FILE SIZE: {os.path.getsize(test_image_path)}", file=sys.stderr)
+        
+        # Direct file transfer with minimum Flask processing
+        return send_file(
+            test_image_path,
+            mimetype='image/jpeg',
+            etag=False,
+            last_modified=None,
+            max_age=0
+        )
+
+    @api_bp.route('/raw-test-image', methods=['GET'])
+    def raw_test_image():
+        """Direct image endpoint that bypasses most Flask processing"""
+        from flask import Response
+        import cv2
+        import numpy as np
+        
+        # Create simple test image
+        img = np.zeros((120, 160, 3), dtype=np.uint8)
+        img[:, :, 0] = 255  # Blue color
+        
+        # Draw text on image
+        cv2.putText(img, "Raw Test", (30, 60), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        
+        # Convert to bytes
+        _, buffer = cv2.imencode('.jpg', img)
+        img_bytes = buffer.tobytes()
+        
+        # Build response directly with minimal Flask processing
+        headers = {
+            'Content-Type': 'image/jpeg',
+            'Content-Length': str(len(img_bytes)),
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-cache'
+        }
+        
+        return Response(img_bytes, status=200, headers=headers, direct_passthrough=True)
+
+    @api_bp.route('/annotations', methods=['POST', 'OPTIONS'])
+    def create_annotation():
+        if request.method == 'OPTIONS':
+            # Handle CORS preflight request
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+            return response
+        
+        # Handle POST request
+        try:
+            data = request.json
+            print("Received annotation data:", data)  # Debug logging
+            
+            # Validate required fields
+            required_fields = ['video_id', 'start_time', 'end_time', 'start_frame', 'end_frame', 'label']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'error': f'Missing required field: {field}'}), 400
+            
+            result = save_annotation(data)
+            return jsonify(result)
+        except Exception as e:
+            import traceback
+            print("Error saving annotation:", str(e))
+            print(traceback.format_exc())
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/bbox-annotations', methods=['POST', 'OPTIONS'])
+    def create_bbox_annotation():
+        if request.method == 'OPTIONS':
+            # Handle CORS preflight request
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+            return response
+        
+        # Handle POST request
+        try:
+            data = request.json
+            print("Received bbox annotation data:", data)  # Debug logging
+            
+            # Validate required fields
+            required_fields = ['video_id', 'frame_index', 'x', 'y', 'width', 'height', 'part_label']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'error': f'Missing required field: {field}'}), 400
+            
+            from .services.bounding_box import save_bbox_annotation
+            result = save_bbox_annotation(data)
+            return jsonify(result)
+        except Exception as e:
+            import traceback
+            print("Error saving bbox annotation:", str(e))
+            print(traceback.format_exc())
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/bbox-annotations/<int:video_id>', methods=['GET', 'OPTIONS'])
+    def get_bbox_annotations(video_id):
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+            return response
+        
+        """Get all bounding box annotations for a specific video"""
+        logger.debug(f"GET request received for bbox-annotations with video_id={video_id}")
+        try:
+            from .models import BoundingBoxAnnotation
+            
+            logger.debug("Querying database for bounding box annotations")
+            bboxes = BoundingBoxAnnotation.query.filter_by(video_id=video_id).all()
+            logger.debug(f"Found {len(bboxes)} bounding box annotations")
+            
+            result = [{
+                'bbox_id': bbox.bbox_id,
+                'video_id': bbox.video_id,
+                'frame_index': bbox.frame_index,
+                'x': bbox.x,
+                'y': bbox.y,
+                'width': bbox.width,
+                'height': bbox.height,
+                'part_label': bbox.part_label
+            } for bbox in bboxes]
+            
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error in get_bbox_annotations: {str(e)}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/bbox-annotations/<int:bbox_id>', methods=['DELETE', 'OPTIONS'])
+    def delete_bbox_annotation(bbox_id):
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'DELETE,OPTIONS')
+            return response
+        
+        """Delete a bounding box annotation"""
+        try:
+            from .models import BoundingBoxAnnotation
+            
+            bbox = BoundingBoxAnnotation.query.get(bbox_id)
+            if not bbox:
+                return jsonify({'error': 'Bounding box not found'}), 404
+            
+            db.session.delete(bbox)
+            db.session.commit()
+            
+            return jsonify({'status': 'deleted'})
+        except Exception as e:
+            import traceback
+            print("Error deleting bbox annotation:", str(e))
+            print(traceback.format_exc())
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/annotations/<int:annotation_id>', methods=['DELETE', 'OPTIONS'])
+    def delete_annotation(annotation_id):
+        """Delete a temporal annotation"""
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'DELETE,OPTIONS')
+            return response
+        
+        try:
+            from .models import TemporalAnnotation
+            
+            annotation = TemporalAnnotation.query.get(annotation_id)
+            if not annotation:
+                return jsonify({'error': 'Annotation not found'}), 404
+            
+            db.session.delete(annotation)
+            db.session.commit()
+            
+            return jsonify({'status': 'deleted'})
+        except Exception as e:
+            logger.error(f"Error deleting annotation: {str(e)}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.errorhandler(404)
+    @api_bp.errorhandler(500)
+    def handle_error(error):
+        """Convert HTML error pages to JSON for API consistency"""
+        from flask import request, jsonify
+        
+        # Don't modify image responses
+        if request.path.startswith('/api/thumbnail/'):
+            return error
+        
+        # For other API routes, return JSON
+        if request.path.startswith('/api/'):
+            return jsonify({"error": str(error)}), error.code
+        
+        # For non-API routes, return the original error
+        return error
+
+    @api_bp.before_request
+    def log_request_info():
+        logger.debug('Headers: %s', request.headers)
+        logger.debug('Body: %s', request.get_data())
+        logger.debug('Route: %s %s', request.method, request.path)
+
+    # At the end of all route definitions:
+    api_routes_registered = True

@@ -1,0 +1,55 @@
+/* VideoList.css */
+.video-list {
+    padding: 10px;
+}
+
+.video-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.video-item {
+    margin-bottom: 8px;
+}
+
+.video-item button {
+    width: 100%;
+    text-align: left;
+    padding: 10px;
+    background-color: var(--vt-bg-secondary);
+    border: 1px solid var(--vt-border-light);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.video-item button:hover {
+    background-color: rgba(232, 119, 34, 0.1); /* Light burnt orange */
+}
+
+.video-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+    word-break: break-word;
+    color: var(--vt-chicago-maroon);
+}
+
+.video-specs {
+    font-size: 0.8rem;
+    color: var(--vt-text-tertiary);
+}
+
+.loading, .no-videos {
+    padding: 10px;
+    text-align: center;
+    color: var(--vt-text-tertiary);
+}
+
+.error {
+    color: var(--vt-error);
+    background-color: rgba(134, 31, 65, 0.1);
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+}
