@@ -14,11 +14,14 @@ from PIL import Image, ImageDraw, ImageFont
 import traceback
 import io
 import sys
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from .blueprints import api_bp, api_routes_registered
 import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Enable CORS for all routes in the blueprint
+CORS(api_bp, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Add this function to check for allowed file extensions
 def allowed_file(filename):
@@ -549,31 +552,36 @@ if not api_routes_registered:
             logger.error(f"Error in get_bbox_annotations: {str(e)}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
-    @api_bp.route('/bbox-annotations/<int:bbox_id>', methods=['DELETE', 'OPTIONS'])
-    def delete_bbox_annotation(bbox_id):
-        if request.method == 'OPTIONS':
-            response = jsonify({'status': 'success'})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'DELETE,OPTIONS')
-            return response
-        
-        """Delete a bounding box annotation"""
+    @api_bp.route('/delete-bbox/<int:bbox_id>', methods=['GET'])
+    def delete_bbox_get(bbox_id):
+        """Delete a bounding box annotation via GET request (avoids CORS preflight)"""
+        logger.debug(f"GET request received to delete bbox with id={bbox_id}")
         try:
             from .models import BoundingBoxAnnotation
             
+            # Find the bbox annotation
             bbox = BoundingBoxAnnotation.query.get(bbox_id)
             if not bbox:
+                logger.error(f"Bounding box with id {bbox_id} not found")
                 return jsonify({'error': 'Bounding box not found'}), 404
             
+            # Store video_id for response
+            video_id = bbox.video_id
+            
+            # Delete the bbox
             db.session.delete(bbox)
             db.session.commit()
             
-            return jsonify({'status': 'deleted'})
+            logger.debug(f"Successfully deleted bounding box with id {bbox_id}")
+            return jsonify({
+                'status': 'success', 
+                'message': 'Bounding box deleted successfully',
+                'bbox_id': bbox_id,
+                'video_id': video_id
+            })
         except Exception as e:
-            import traceback
-            print("Error deleting bbox annotation:", str(e))
-            print(traceback.format_exc())
+            logger.error(f"Error deleting bounding box: {str(e)}", exc_info=True)
+            db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
     @api_bp.route('/annotations/<int:annotation_id>', methods=['DELETE', 'OPTIONS'])
@@ -601,6 +609,156 @@ if not api_routes_registered:
             logger.error(f"Error deleting annotation: {str(e)}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
+    @api_bp.route('/import/google-drive', methods=['POST'])
+    def import_from_google_drive():
+        """Import videos from Google Drive"""
+        if not request.json or 'fileIds' not in request.json:
+            return jsonify({'error': 'No file IDs provided'}), 400
+        
+        # For MVP, redirect to front-end hosted Google Drive Picker
+        # This is a placeholder - a full implementation would use OAuth2 and Google Drive API
+        return jsonify({
+            'status': 'redirect',
+            'message': 'Please authorize with Google Drive in the browser'
+        })
+
+    @api_bp.route('/import/url', methods=['POST'])
+    def import_from_url():
+        """Import videos from URLs"""
+        from .services.import_sources.url_import import import_from_urls
+        
+        if not request.json or 'urls' not in request.json:
+            return jsonify({'error': 'No URLs provided'}), 400
+        
+        urls = request.json['urls']
+        
+        try:
+            results = import_from_urls(urls)
+            db.session.commit()
+            return jsonify({'imported': results})
+        except Exception as e:
+            db.session.rollback()
+            import traceback
+            print(f"Error in URL import: {str(e)}")
+            print(traceback.format_exc())
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/import/dropbox', methods=['POST'])
+    def import_from_dropbox():
+        """Import videos from Dropbox"""
+        from .services.import_sources.dropbox import import_from_dropbox
+        
+        if not request.json or 'files' not in request.json:
+            return jsonify({'error': 'No files provided'}), 400
+        
+        files = request.json['files']
+        
+        try:
+            results = import_from_dropbox(files)
+            db.session.commit()
+            return jsonify({'imported': results})
+        except Exception as e:
+            db.session.rollback()
+            import traceback
+            print(f"Error in Dropbox import: {str(e)}")
+            print(traceback.format_exc())
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/review', methods=['GET'])
+    def get_review_data():
+        """Get all videos with their annotations for review"""
+        try:
+            from .models import Video, TemporalAnnotation, BoundingBoxAnnotation
+            
+            # Get all videos
+            videos = Video.query.all()
+            
+            review_data = []
+            for video in videos:
+                # Get temporal annotations for this video
+                temporal_annotations = TemporalAnnotation.query.filter_by(video_id=video.video_id).all()
+                temporal_data = [{
+                    'annotation_id': anno.annotation_id,
+                    'start_time': anno.start_time,
+                    'end_time': anno.end_time,
+                    'start_frame': anno.start_frame,
+                    'end_frame': anno.end_frame,
+                    'label': anno.label
+                } for anno in temporal_annotations]
+                
+                # Get bounding box annotations for this video
+                bbox_annotations = BoundingBoxAnnotation.query.filter_by(video_id=video.video_id).all()
+                bbox_data = [{
+                    'bbox_id': bbox.bbox_id,
+                    'frame_index': bbox.frame_index,
+                    'x': bbox.x,
+                    'y': bbox.y,
+                    'width': bbox.width,
+                    'height': bbox.height,
+                    'part_label': bbox.part_label
+                } for bbox in bbox_annotations]
+                
+                review_data.append({
+                    'video_id': video.video_id,
+                    'filename': video.filename,
+                    'resolution': video.resolution,
+                    'framerate': video.framerate,
+                    'duration': video.duration,
+                    'status': video.status if hasattr(video, 'status') else 'pending',
+                    'annotations': temporal_data,
+                    'bboxAnnotations': bbox_data
+                })
+            
+            return jsonify(review_data)
+        except Exception as e:
+            logger.error(f"Error in get_review_data: {str(e)}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/videos/<int:video_id>/confirm', methods=['POST'])
+    def confirm_video(video_id):
+        """Mark a video as confirmed after review"""
+        try:
+            from .models import Video
+            
+            video = Video.query.get(video_id)
+            if not video:
+                return jsonify({'error': 'Video not found'}), 404
+            
+            # Add status field if it doesn't exist yet (you may need to update your model)
+            video.status = 'confirmed'
+            db.session.commit()
+            
+            return jsonify({'status': 'success', 'message': 'Video confirmed successfully'})
+        except Exception as e:
+            logger.error(f"Error confirming video: {str(e)}", exc_info=True)
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/review/complete', methods=['POST'])
+    def complete_review():
+        """Mark the review process as complete for the current batch"""
+        try:
+            from .models import Video
+            
+            # Update all pending videos to confirmed status
+            pending_videos = Video.query.filter_by(status='pending').all()
+            for video in pending_videos:
+                video.status = 'confirmed'
+            
+            # You might want to add a batch tracking system later
+            # For now, just mark all videos as part of the completed batch
+            db.session.commit()
+            
+            return jsonify({
+                'status': 'success', 
+                'message': 'Review completed successfully',
+                'confirmed_count': len(pending_videos)
+            })
+        except Exception as e:
+            logger.error(f"Error completing review: {str(e)}", exc_info=True)
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
     @api_bp.errorhandler(404)
     @api_bp.errorhandler(500)
     def handle_error(error):
@@ -623,6 +781,13 @@ if not api_routes_registered:
         logger.debug('Headers: %s', request.headers)
         logger.debug('Body: %s', request.get_data())
         logger.debug('Route: %s %s', request.method, request.path)
+
+    # Debug output to check route registration
+    print("\n=== REGISTERED ROUTES ===")
+    print("Note: Routes will be fully registered when the blueprint is attached to the Flask app")
+    for route in [route for route in dir(api_bp) if 'route' in route]:
+        print(f"Blueprint route: {route}")
+    print("=========================\n")
 
     # At the end of all route definitions:
     api_routes_registered = True

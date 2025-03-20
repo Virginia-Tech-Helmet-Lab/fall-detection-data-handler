@@ -41,6 +41,11 @@ const VideoPlayer = ({ videoUrl, onPositionChange }) => {
         // Clear any previous thumbnails when loading a new video
         setFrameThumbnails({});
         setError(null);
+        
+        // Dispatch a custom event when video is loaded
+        setTimeout(() => {
+            window.dispatchEvent(new Event('videodimensionsupdate'));
+        }, 200);
     };
 
     const handleTimeUpdate = () => {
@@ -350,221 +355,223 @@ const VideoPlayer = ({ videoUrl, onPositionChange }) => {
     }, [frameThumbnails]);
 
     return (
-        <div className="video-player-container">
-            {error ? (
-                <div className="error-message">{error}</div>
-            ) : (
-                <>
-                    <div className="video-info">
-                        <span className="time-display">
-                            Frame: {currentFrame} | Time: {formatTime(currentTime)} / {formatTime(duration)}
-                        </span>
-                    </div>
-                    <div 
-                        ref={wrapperRef} 
-                        className={`video-wrapper ${zoom > 1 ? 'zoomable' : ''} ${isDragging ? 'dragging' : ''}`}
-                        style={{ cursor: zoom > 1 ? 'grab' : 'default' }}
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseLeave}
-                    >
-                        {/* This container masks the video but not controls */}
-                        <div className="video-zoom-container">
-                            {/* This container gets transformed */}
-                            <div 
-                                className="video-content"
-                                style={{
-                                    transform: `scale(${zoom})`,
-                                    transformOrigin: 'center center',
-                                    marginTop: `${zoom > 1 ? panPosition.y : 0}px`,
-                                    marginLeft: `${zoom > 1 ? panPosition.x : 0}px`,
-                                }}
+        <div className="video-player-container" style={{ position: 'relative' }} ref={wrapperRef}>
+            <div style={{ position: 'relative' }}>
+                {error ? (
+                    <div className="error-message">{error}</div>
+                ) : (
+                    <>
+                        <div className="video-info">
+                            <span className="time-display">
+                                Frame: {currentFrame} | Time: {formatTime(currentTime)} / {formatTime(duration)}
+                            </span>
+                        </div>
+                        <div 
+                            ref={wrapperRef} 
+                            className={`video-wrapper ${zoom > 1 ? 'zoomable' : ''} ${isDragging ? 'dragging' : ''}`}
+                            style={{ cursor: zoom > 1 ? 'grab' : 'default' }}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseLeave}
+                        >
+                            {/* This container masks the video but not controls */}
+                            <div className="video-zoom-container">
+                                {/* This container gets transformed */}
+                                <div 
+                                    className="video-content"
+                                    style={{
+                                        transform: `scale(${zoom})`,
+                                        transformOrigin: 'center center',
+                                        marginTop: `${zoom > 1 ? panPosition.y : 0}px`,
+                                        marginLeft: `${zoom > 1 ? panPosition.x : 0}px`,
+                                    }}
+                                >
+                                    {/* Video without controls */}
+                                    <video 
+                                        ref={videoRef} 
+                                        src={videoUrl} 
+                                        className="video-element"
+                                        controls={false}
+                                        onLoadedMetadata={handleMetadataLoaded}
+                                        onTimeUpdate={handleTimeUpdate}
+                                        onError={handleVideoError}
+                                    />
+                                </div>
+                            </div>
+                            
+                            {/* Separate video element with controls only */}
+                            <div className="controls-container">
+                                <div className="custom-controls">
+                                    <button 
+                                        className="play-pause-btn" 
+                                        onClick={() => {
+                                            if (isPlaying) {
+                                                videoRef.current.pause();
+                                                setIsPlaying(false);
+                                            } else {
+                                                videoRef.current.play();
+                                                setIsPlaying(true);
+                                            }
+                                        }}
+                                    >
+                                        {isPlaying ? '⏸' : '▶️'}
+                                    </button>
+                                    
+                                    <div 
+                                        className="progress-container"
+                                        onClick={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const pos = (e.clientX - rect.left) / rect.width;
+                                            const newTime = pos * duration;
+                                            videoRef.current.currentTime = newTime;
+                                            setCurrentTime(newTime);
+                                            const newFrame = Math.floor(newTime * frameRate);
+                                            setCurrentFrame(newFrame);
+                                            
+                                            // Notify parent
+                                            if (onPositionChange) {
+                                                onPositionChange(newTime, newFrame, frameRate, duration);
+                                            }
+                                        }}
+                                    >
+                                        <div 
+                                            className="progress-bar" 
+                                            style={{ width: `${(currentTime / duration) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                    
+                                    <div className="time-display-custom">
+                                        {formatTime(currentTime)} / {formatTime(duration)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="frame-selector-toggle">
+                            <button 
+                                onClick={toggleFrameSelector}
+                                className={`toggle-button ${showFrameSelector ? 'active' : ''}`}
                             >
-                                {/* Video without controls */}
-                                <video 
-                                    ref={videoRef} 
-                                    src={videoUrl} 
-                                    className="video-element"
-                                    controls={false}
-                                    onLoadedMetadata={handleMetadataLoaded}
-                                    onTimeUpdate={handleTimeUpdate}
-                                    onError={handleVideoError}
+                                {showFrameSelector ? 'Hide Frame Selector' : 'Show Frame Selector'}
+                            </button>
+                        </div>
+                        
+                        {showFrameSelector && (
+                            <div className="frame-filmstrip">
+                                {prevFrames.map(frameNum => (
+                                    <div 
+                                        key={`prev-${frameNum}`} 
+                                        className={`filmstrip-frame prev-frame ${currentFrame === frameNum ? 'current-frame' : ''}`}
+                                        onClick={() => goToFrame(frameNum)}
+                                    >
+                                        {frameThumbnails[frameNum]?.url ? (
+                                            <img 
+                                                src={frameThumbnails[frameNum].url} 
+                                                alt={`Frame ${frameNum}`} 
+                                                className="frame-thumbnail" 
+                                            />
+                                        ) : frameThumbnails[frameNum]?.error ? (
+                                            <div className="thumbnail-error">
+                                                Error<br/>Frame {frameNum}
+                                            </div>
+                                        ) : frameThumbnails[frameNum]?.loading ? (
+                                            <div className="thumbnail-loading">
+                                                Loading<br/>Frame {frameNum}
+                                            </div>
+                                        ) : (
+                                            <div className="frame-placeholder">
+                                                Frame {frameNum}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                
+                                <div className="filmstrip-frame current-frame">
+                                    {frameThumbnails[currentFrame]?.url ? (
+                                        <img 
+                                            src={frameThumbnails[currentFrame].url} 
+                                            alt={`Frame ${currentFrame}`} 
+                                            className="frame-thumbnail" 
+                                        />
+                                    ) : frameThumbnails[currentFrame]?.error ? (
+                                        <div className="thumbnail-error">
+                                            Error<br/>Frame {currentFrame}
+                                        </div>
+                                    ) : frameThumbnails[currentFrame]?.loading ? (
+                                        <div className="thumbnail-loading">
+                                            Loading<br/>Frame {currentFrame}
+                                        </div>
+                                    ) : (
+                                        <div className="frame-placeholder">{currentFrame}</div>
+                                    )}
+                                </div>
+                                
+                                {nextFrames.map(frame => (
+                                    <div 
+                                        key={`next-${frame}`} 
+                                        className="filmstrip-frame next-frame"
+                                        onClick={() => goToFrame(frame)}
+                                    >
+                                        {frameThumbnails[frame]?.url ? (
+                                            <img 
+                                                src={frameThumbnails[frame].url} 
+                                                alt={`Frame ${frame}`} 
+                                                className="frame-thumbnail" 
+                                            />
+                                        ) : frameThumbnails[frame]?.error ? (
+                                            <div className="thumbnail-error">
+                                                Error<br/>Frame {frame}
+                                            </div>
+                                        ) : frameThumbnails[frame]?.loading ? (
+                                            <div className="thumbnail-loading">
+                                                Loading<br/>Frame {frame}
+                                            </div>
+                                        ) : (
+                                            <div className="frame-placeholder">{frame}</div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        <div className="control-panel">
+                            <div className="slider-control">
+                                <label>
+                                    Speed:
+                                    <span className="speed-value">{playbackRate.toFixed(1)}x</span>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="0.25" 
+                                    max="2" 
+                                    step="0.25" 
+                                    value={playbackRate} 
+                                    onChange={handlePlaybackRateChange}
+                                />
+                            </div>
+                            
+                            <div className="slider-control">
+                                <label>
+                                    Zoom:
+                                    <span className="zoom-value">{zoom.toFixed(1)}x</span>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="0.5" 
+                                    max="2" 
+                                    step="0.1" 
+                                    value={zoom} 
+                                    onChange={handleZoomChange}
                                 />
                             </div>
                         </div>
                         
-                        {/* Separate video element with controls only */}
-                        <div className="controls-container">
-                            <div className="custom-controls">
-                                <button 
-                                    className="play-pause-btn" 
-                                    onClick={() => {
-                                        if (isPlaying) {
-                                            videoRef.current.pause();
-                                            setIsPlaying(false);
-                                        } else {
-                                            videoRef.current.play();
-                                            setIsPlaying(true);
-                                        }
-                                    }}
-                                >
-                                    {isPlaying ? '⏸' : '▶️'}
-                                </button>
-                                
-                                <div 
-                                    className="progress-container"
-                                    onClick={(e) => {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const pos = (e.clientX - rect.left) / rect.width;
-                                        const newTime = pos * duration;
-                                        videoRef.current.currentTime = newTime;
-                                        setCurrentTime(newTime);
-                                        const newFrame = Math.floor(newTime * frameRate);
-                                        setCurrentFrame(newFrame);
-                                        
-                                        // Notify parent
-                                        if (onPositionChange) {
-                                            onPositionChange(newTime, newFrame, frameRate, duration);
-                                        }
-                                    }}
-                                >
-                                    <div 
-                                        className="progress-bar" 
-                                        style={{ width: `${(currentTime / duration) * 100}%` }}
-                                    ></div>
-                                </div>
-                                
-                                <div className="time-display-custom">
-                                    {formatTime(currentTime)} / {formatTime(duration)}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="frame-selector-toggle">
-                        <button 
-                            onClick={toggleFrameSelector}
-                            className={`toggle-button ${showFrameSelector ? 'active' : ''}`}
-                        >
-                            {showFrameSelector ? 'Hide Frame Selector' : 'Show Frame Selector'}
-                        </button>
-                    </div>
-                    
-                    {showFrameSelector && (
-                        <div className="frame-filmstrip">
-                            {prevFrames.map(frameNum => (
-                                <div 
-                                    key={`prev-${frameNum}`} 
-                                    className={`filmstrip-frame prev-frame ${currentFrame === frameNum ? 'current-frame' : ''}`}
-                                    onClick={() => goToFrame(frameNum)}
-                                >
-                                    {frameThumbnails[frameNum]?.url ? (
-                                        <img 
-                                            src={frameThumbnails[frameNum].url} 
-                                            alt={`Frame ${frameNum}`} 
-                                            className="frame-thumbnail" 
-                                        />
-                                    ) : frameThumbnails[frameNum]?.error ? (
-                                        <div className="thumbnail-error">
-                                            Error<br/>Frame {frameNum}
-                                        </div>
-                                    ) : frameThumbnails[frameNum]?.loading ? (
-                                        <div className="thumbnail-loading">
-                                            Loading<br/>Frame {frameNum}
-                                        </div>
-                                    ) : (
-                                        <div className="frame-placeholder">
-                                            Frame {frameNum}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                            
-                            <div className="filmstrip-frame current-frame">
-                                {frameThumbnails[currentFrame]?.url ? (
-                                    <img 
-                                        src={frameThumbnails[currentFrame].url} 
-                                        alt={`Frame ${currentFrame}`} 
-                                        className="frame-thumbnail" 
-                                    />
-                                ) : frameThumbnails[currentFrame]?.error ? (
-                                    <div className="thumbnail-error">
-                                        Error<br/>Frame {currentFrame}
-                                    </div>
-                                ) : frameThumbnails[currentFrame]?.loading ? (
-                                    <div className="thumbnail-loading">
-                                        Loading<br/>Frame {currentFrame}
-                                    </div>
-                                ) : (
-                                    <div className="frame-placeholder">{currentFrame}</div>
-                                )}
-                            </div>
-                            
-                            {nextFrames.map(frame => (
-                                <div 
-                                    key={`next-${frame}`} 
-                                    className="filmstrip-frame next-frame"
-                                    onClick={() => goToFrame(frame)}
-                                >
-                                    {frameThumbnails[frame]?.url ? (
-                                        <img 
-                                            src={frameThumbnails[frame].url} 
-                                            alt={`Frame ${frame}`} 
-                                            className="frame-thumbnail" 
-                                        />
-                                    ) : frameThumbnails[frame]?.error ? (
-                                        <div className="thumbnail-error">
-                                            Error<br/>Frame {frame}
-                                        </div>
-                                    ) : frameThumbnails[frame]?.loading ? (
-                                        <div className="thumbnail-loading">
-                                            Loading<br/>Frame {frame}
-                                        </div>
-                                    ) : (
-                                        <div className="frame-placeholder">{frame}</div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    
-                    <div className="control-panel">
-                        <div className="slider-control">
-                            <label>
-                                Speed:
-                                <span className="speed-value">{playbackRate.toFixed(1)}x</span>
-                            </label>
-                            <input 
-                                type="range" 
-                                min="0.25" 
-                                max="2" 
-                                step="0.25" 
-                                value={playbackRate} 
-                                onChange={handlePlaybackRateChange}
-                            />
-                        </div>
-                        
-                        <div className="slider-control">
-                            <label>
-                                Zoom:
-                                <span className="zoom-value">{zoom.toFixed(1)}x</span>
-                            </label>
-                            <input 
-                                type="range" 
-                                min="0.5" 
-                                max="2" 
-                                step="0.1" 
-                                value={zoom} 
-                                onChange={handleZoomChange}
-                            />
-                        </div>
-                    </div>
-                    
-                    {/* Hidden canvas for thumbnail generation */}
-                    <canvas ref={canvasRef} style={{ display: 'none' }} />
-                </>
-            )}
+                        {/* Hidden canvas for thumbnail generation */}
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
+                    </>
+                )}
+            </div>
         </div>
     );
 };

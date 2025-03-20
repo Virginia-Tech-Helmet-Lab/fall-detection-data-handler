@@ -10,6 +10,7 @@ class Video(db.Model):
     duration = db.Column(db.Float)
     import_date = db.Column(db.DateTime, default=datetime.utcnow)
     normalization_settings = db.Column(db.JSON)
+    status = db.Column(db.String(20), nullable=True, default='pending')
 
 class TemporalAnnotation(db.Model):
     __tablename__ = 'temporal_annotations'

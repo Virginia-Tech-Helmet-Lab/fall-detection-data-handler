@@ -23,9 +23,12 @@ const LabelingInterface = () => {
     // Create a ref for the AnnotationPanel to call its methods
     const annotationPanelRef = useRef();
     
-    // Video dimensions - these should match the actual video display size
-    const videoDisplayWidth = 640;
-    const videoDisplayHeight = 480;
+    // Replace hardcoded dimensions with dynamic state
+    const [videoDisplayWidth, setVideoDisplayWidth] = useState(640);
+    const [videoDisplayHeight, setVideoDisplayHeight] = useState(480);
+    
+    // Create a ref for the video container
+    const videoContainerRef = useRef(null);
     
     // Add navigate hook
     const navigate = useNavigate();
@@ -42,6 +45,39 @@ const LabelingInterface = () => {
             setHasAnnotations(false);
         }
     }, [selectedVideo, temporalAnnotations, boundingBoxes]);
+    
+    // Add a function to update dimensions
+    const updateVideoDimensions = () => {
+        if (videoContainerRef.current) {
+            const videoElement = videoContainerRef.current.querySelector('video');
+            if (videoElement) {
+                // Get the actual rendered dimensions of the video
+                const rect = videoElement.getBoundingClientRect();
+                setVideoDisplayWidth(rect.width);
+                setVideoDisplayHeight(rect.height);
+            }
+        }
+    };
+    
+    // Update dimensions when video is selected or window is resized
+    useEffect(() => {
+        if (selectedVideo) {
+            // Add a small delay to ensure video is rendered
+            const timer = setTimeout(updateVideoDimensions, 100);
+            
+            // Add resize event listener
+            window.addEventListener('resize', updateVideoDimensions);
+            
+            // Listen for our custom event
+            window.addEventListener('videodimensionsupdate', updateVideoDimensions);
+            
+            return () => {
+                clearTimeout(timer);
+                window.removeEventListener('resize', updateVideoDimensions);
+                window.removeEventListener('videodimensionsupdate', updateVideoDimensions);
+            };
+        }
+    }, [selectedVideo]);
     
     const handleVideoSelect = (video) => {
         setSelectedVideo(video);
@@ -110,15 +146,24 @@ const LabelingInterface = () => {
                             videoUrl={`http://localhost:5000/api/static/${selectedVideo.filename}`} 
                             onPositionChange={handlePositionChange}
                         />
-                        <BoundingBoxTool 
-                            canvasWidth={videoDisplayWidth} 
-                            canvasHeight={videoDisplayHeight} 
-                            onBoxesUpdate={handleBoxesUpdate}
-                            isActive={boundingBoxActive}
-                            currentFrame={currentFrame}
-                            videoId={selectedVideo.video_id}
-                            selectedLabel={selectedLabel}
-                        />
+                        <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            pointerEvents: boundingBoxActive ? 'auto' : 'none',
+                        }}>
+                            <BoundingBoxTool 
+                                canvasWidth={videoDisplayWidth} 
+                                canvasHeight={videoDisplayHeight} 
+                                onBoxesUpdate={handleBoxesUpdate}
+                                isActive={boundingBoxActive}
+                                currentFrame={currentFrame}
+                                videoId={selectedVideo.video_id}
+                                selectedLabel={selectedLabel}
+                            />
+                        </div>
                     </div>
                 ) : (
                     <p className="select-prompt">Please select a video from the list.</p>

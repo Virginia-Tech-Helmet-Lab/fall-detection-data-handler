@@ -99,8 +99,12 @@ const BoundingBoxTool = ({
     setDrawing(true);
     
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Calculate coordinates relative to the canvas size
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     setStartPos({ x, y });
     setCurrentBox({ x, y, width: 0, height: 0 });
@@ -110,8 +114,11 @@ const BoundingBoxTool = ({
     if (!drawing || !isActive) return;
     
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
     
     const width = x - startPos.x;
     const height = y - startPos.y;
@@ -254,23 +261,161 @@ const BoundingBoxTool = ({
     }
   };
 
+  const deleteBox = async (boxId) => {
+    try {
+      // Show deletion indicator
+      const deleteIndicator = document.createElement('div');
+      deleteIndicator.id = 'bbox-delete-indicator';
+      deleteIndicator.className = 'bbox-save-indicator';
+      deleteIndicator.textContent = 'Deleting bounding box...';
+      document.body.appendChild(deleteIndicator);
+      
+      console.log(`Attempting to delete box with ID ${boxId} using URL: http://localhost:5000/api/delete-bbox/${boxId}`);
+      
+      // Use a different URL path
+      const response = await fetch(`http://localhost:5000/api/remove-bbox/${boxId}`);
+      
+      if (response.ok) {
+        deleteIndicator.textContent = 'Bounding box deleted!';
+        deleteIndicator.style.backgroundColor = 'rgba(40,167,69,0.8)';
+        
+        // Remove box from state
+        const updatedBoxes = boxes.filter(box => box.bbox_id !== boxId);
+        setBoxes(updatedBoxes);
+        
+        // Update displayed boxes for current frame
+        const currentFrameBoxes = updatedBoxes.filter(box => box.frameIndex === currentFrame);
+        setDisplayedBoxes(currentFrameBoxes);
+        
+        // Notify parent component
+        if (onBoxesUpdate) {
+          onBoxesUpdate(updatedBoxes);
+        }
+        
+        setTimeout(() => {
+          const indicator = document.getElementById('bbox-delete-indicator');
+          if (indicator && document.body.contains(indicator)) {
+            document.body.removeChild(indicator);
+          }
+        }, 2000);
+      } else {
+        deleteIndicator.textContent = 'Failed to delete bounding box!';
+        deleteIndicator.style.backgroundColor = 'rgba(220,53,69,0.8)';
+        
+        setTimeout(() => {
+          const indicator = document.getElementById('bbox-delete-indicator');
+          if (indicator && document.body.contains(indicator)) {
+            document.body.removeChild(indicator);
+          }
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error deleting bounding box:', error);
+      
+      // Clean up indicator
+      const indicator = document.getElementById('bbox-delete-indicator');
+      if (indicator && document.body.contains(indicator)) {
+        document.body.removeChild(indicator);
+      }
+    }
+  };
+
+  useEffect(() => {
+    // This effect ensures the canvas dimensions match the video dimensions
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Set the canvas size to match the actual video dimensions
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    
+    // Force a redraw when dimensions change
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Redraw existing boxes
+    displayedBoxes.forEach(box => {
+      ctx.strokeStyle = '#00FF00';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      
+      // Add label text
+      ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
+      ctx.fillRect(box.x, box.y - 20, 100, 20);
+      ctx.fillStyle = '#000000';
+      ctx.font = '12px Arial';
+      ctx.fillText(box.partLabel, box.x + 5, box.y - 5);
+    });
+    
+    // Draw current box if exists
+    if (currentBox) {
+      ctx.strokeStyle = '#FF0000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(currentBox.x, currentBox.y, currentBox.width, currentBox.height);
+    }
+  }, [canvasWidth, canvasHeight, displayedBoxes, currentBox]);
+
+  // Add this function to handle right-click on boxes
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    console.log("Context menu event fired");
+    
+    if (!isActive) {
+      console.log("Tool not active, ignoring right click");
+      return;
+    }
+    
+    // Get mouse coordinates
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    console.log(`Right click at position: (${x}, ${y})`);
+    console.log("All displayed boxes:", displayedBoxes);
+    
+    // Check if right-click happened on any box
+    const clickedBox = displayedBoxes.find(box => 
+      x >= box.x && 
+      x <= box.x + box.width && 
+      y >= box.y && 
+      y <= box.y + box.height
+    );
+    
+    console.log("Right-clicked on box:", clickedBox);
+    
+    if (clickedBox && clickedBox.bbox_id) {
+      console.log(`Will attempt to delete box with ID: ${clickedBox.bbox_id}`);
+      if (window.confirm(`Delete ${clickedBox.partLabel} bounding box?`)) {
+        console.log("User confirmed deletion");
+        // ONLY call deleteBox here
+        deleteBox(clickedBox.bbox_id);
+      } else {
+        console.log("User canceled deletion");
+      }
+    } else {
+      console.log("No box found at click position or missing bbox_id");
+    }
+  };
+
   return (
     <canvas
       ref={canvasRef}
-      width={canvasWidth}
-      height={canvasHeight}
-      className="bounding-box-canvas"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
-        zIndex: 10,
+        width: '100%',
+        height: '100%',
         pointerEvents: isActive ? 'auto' : 'none',
-        cursor: isActive ? 'crosshair' : 'default',
+        zIndex: 2
       }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onContextMenu={handleContextMenu}
     />
   );
 };

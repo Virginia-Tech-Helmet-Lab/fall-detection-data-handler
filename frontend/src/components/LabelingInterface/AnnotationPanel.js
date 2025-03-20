@@ -187,25 +187,25 @@ const AnnotationPanel = forwardRef(({
   };
 
   const handleDeleteBbox = async (bboxId) => {
-    if (!window.confirm('Are you sure you want to delete this bounding box?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`http://localhost:5000/api/bbox-annotations/${bboxId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        // Refresh the list
-        fetchBboxAnnotations();
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to delete bounding box: ${errorData.error || 'Unknown error'}`);
+    if (window.confirm('Are you sure you want to delete this bounding box?')) {
+      try {
+        console.log(`Attempting to delete bbox with ID ${bboxId}`);
+        
+        // Use the GET endpoint instead of DELETE to avoid CORS issues
+        const response = await fetch(`http://localhost:5000/api/delete-bbox/${bboxId}`);
+        
+        if (response.ok) {
+          // Success - update the UI
+          setBboxAnnotations(prevBoxes => 
+            prevBoxes.filter(box => box.bbox_id !== bboxId)
+          );
+        } else {
+          console.error('Failed to delete bounding box:', 
+                       response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('Error deleting bounding box:', error);
       }
-    } catch (error) {
-      console.error('Error deleting bounding box:', error);
-      alert('Error deleting bounding box');
     }
   };
 
