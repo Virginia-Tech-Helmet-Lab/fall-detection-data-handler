@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaArrowRight, FaPlayCircle, FaBookOpen } from 'react-icons/fa';
+import { FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaArrowRight, FaPlayCircle, FaBookOpen, FaBug, FaLightbulb, FaGithub, FaPaperPlane, FaUser, FaEnvelope, FaCopy, FaShare } from 'react-icons/fa';
 import './Home.css';
 import axios from 'axios';
 
@@ -8,6 +8,20 @@ const Home = () => {
     const navigate = useNavigate();
     const [projectStats, setProjectStats] = useState(null);
     const [currentStage, setCurrentStage] = useState('import');
+    
+    // Feedback form state
+    const [feedbackForm, setFeedbackForm] = useState({
+        type: 'feature', // 'feature' or 'bug'
+        title: '',
+        description: '',
+        name: '',
+        email: '',
+        priority: 'medium'
+    });
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
+    const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+    const [submissionMethod, setSubmissionMethod] = useState('github'); // 'github' or 'email'
+    const [showEmailSuccess, setShowEmailSuccess] = useState(false);
 
     useEffect(() => {
         fetchProjectStats();
@@ -86,6 +100,103 @@ const Home = () => {
         if (stageIndex < currentIndex) return 'completed';
         if (stageIndex === currentIndex) return 'current';
         return 'upcoming';
+    };
+
+    const generateEmailBody = () => {
+        const emailBody = `
+Subject: [Fall Detection Data Handler] ${feedbackForm.type === 'feature' ? 'Feature Request' : 'Bug Report'}: ${feedbackForm.title}
+
+Submitted by: ${feedbackForm.name || 'Anonymous'} ${feedbackForm.email ? `(${feedbackForm.email})` : ''}
+Type: ${feedbackForm.type === 'feature' ? 'Feature Request' : 'Bug Report'}
+Priority: ${feedbackForm.priority}
+
+Description:
+${feedbackForm.description}
+
+---
+This feedback was submitted from the Fall Detection Data Handler application.
+        `.trim();
+        
+        return emailBody;
+    };
+
+    const handleFeedbackSubmit = async (e) => {
+        e.preventDefault();
+        setSubmittingFeedback(true);
+        
+        try {
+            if (submissionMethod === 'github') {
+                // GitHub submission method
+                const issueBody = `
+**Submitted by:** ${feedbackForm.name || 'Anonymous'} ${feedbackForm.email ? `(${feedbackForm.email})` : ''}
+**Type:** ${feedbackForm.type === 'feature' ? 'Feature Request' : 'Bug Report'}
+**Priority:** ${feedbackForm.priority}
+
+## Description
+${feedbackForm.description}
+
+---
+*This issue was automatically created from the Fall Detection Data Handler application.*
+                `.trim();
+                
+                const labels = [
+                    feedbackForm.type === 'feature' ? 'enhancement' : 'bug',
+                    `priority-${feedbackForm.priority}`
+                ];
+                
+                const githubUrl = `https://github.com/Virginia-Tech-Helmet-Lab/fall-detection-data-handler/issues/new?` +
+                    `title=${encodeURIComponent(feedbackForm.title)}&` +
+                    `body=${encodeURIComponent(issueBody)}&` +
+                    `labels=${encodeURIComponent(labels.join(','))}`;
+                
+                window.open(githubUrl, '_blank');
+                setFeedbackSubmitted(true);
+                
+            } else {
+                // Email submission method
+                const emailBody = generateEmailBody();
+                const mailtoUrl = `mailto:ethan02@vt.edu?${new URLSearchParams({
+                    subject: `[Fall Detection Data Handler] ${feedbackForm.type === 'feature' ? 'Feature Request' : 'Bug Report'}: ${feedbackForm.title}`,
+                    body: emailBody
+                }).toString()}`;
+                
+                // Copy to clipboard as backup
+                if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(emailBody);
+                }
+                
+                window.location.href = mailtoUrl;
+                setShowEmailSuccess(true);
+                setTimeout(() => setShowEmailSuccess(false), 8000);
+            }
+            
+            setFeedbackForm({
+                type: 'feature',
+                title: '',
+                description: '',
+                name: '',
+                email: '',
+                priority: 'medium'
+            });
+            
+            setTimeout(() => {
+                setFeedbackSubmitted(false);
+                setShowEmailSuccess(false);
+            }, 5000);
+            
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            alert('There was an error submitting your feedback. Please try again.');
+        } finally {
+            setSubmittingFeedback(false);
+        }
+    };
+
+    const handleFeedbackChange = (field, value) => {
+        setFeedbackForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
     };
 
     return (
@@ -239,6 +350,174 @@ const Home = () => {
                     <FaPlayCircle /> 
                     {currentStage === 'import' ? 'Start Importing Videos' : `Continue to ${stages.find(s => s.id === currentStage)?.name}`}
                 </button>
+            </section>
+
+            <section className="feedback-section">
+                <div className="feedback-container">
+                    <div className="feedback-header">
+                        <h2><FaGithub /> Feedback & Feature Requests</h2>
+                        <p>Help us improve the Fall Detection Data Handler! Your feedback drives our development.</p>
+                    </div>
+
+                    {feedbackSubmitted && submissionMethod === 'github' ? (
+                        <div className="feedback-success">
+                            <FaCheckCircle />
+                            <h3>Thank you for your feedback!</h3>
+                            <p>Your GitHub issue has been opened in a new tab. You can track its progress on GitHub.</p>
+                        </div>
+                    ) : showEmailSuccess ? (
+                        <div className="feedback-success">
+                            <FaCheckCircle />
+                            <h3>Email opened successfully!</h3>
+                            <p>Your email client should have opened with a pre-filled message. The feedback has also been copied to your clipboard as a backup.</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleFeedbackSubmit} className="feedback-form">
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Feedback Type</label>
+                                    <div className="feedback-type-buttons">
+                                        <button
+                                            type="button"
+                                            className={`type-button ${feedbackForm.type === 'feature' ? 'active' : ''}`}
+                                            onClick={() => handleFeedbackChange('type', 'feature')}
+                                        >
+                                            <FaLightbulb /> Feature Request
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`type-button ${feedbackForm.type === 'bug' ? 'active' : ''}`}
+                                            onClick={() => handleFeedbackChange('type', 'bug')}
+                                        >
+                                            <FaBug /> Bug Report
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label>Priority</label>
+                                    <select
+                                        value={feedbackForm.priority}
+                                        onChange={(e) => handleFeedbackChange('priority', e.target.value)}
+                                    >
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Submission Method</label>
+                                <div className="submission-method-buttons">
+                                    <button
+                                        type="button"
+                                        className={`method-button ${submissionMethod === 'github' ? 'active' : ''}`}
+                                        onClick={() => setSubmissionMethod('github')}
+                                    >
+                                        <FaGithub /> GitHub Issue
+                                        <small>Requires GitHub account</small>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`method-button ${submissionMethod === 'email' ? 'active' : ''}`}
+                                        onClick={() => setSubmissionMethod('email')}
+                                    >
+                                        <FaEnvelope /> Email
+                                        <small>No account needed</small>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Title *</label>
+                                <input
+                                    type="text"
+                                    value={feedbackForm.title}
+                                    onChange={(e) => handleFeedbackChange('title', e.target.value)}
+                                    placeholder={feedbackForm.type === 'feature' ? 'Brief description of your feature idea' : 'Brief description of the bug'}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Description *</label>
+                                <textarea
+                                    value={feedbackForm.description}
+                                    onChange={(e) => handleFeedbackChange('description', e.target.value)}
+                                    placeholder={feedbackForm.type === 'feature' 
+                                        ? 'Describe the feature you\'d like to see. What problem would it solve? How should it work?' 
+                                        : 'Describe the bug in detail. What were you doing when it occurred? What did you expect to happen vs. what actually happened?'}
+                                    rows={5}
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label><FaUser /> Your Name (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={feedbackForm.name}
+                                        onChange={(e) => handleFeedbackChange('name', e.target.value)}
+                                        placeholder="How should we credit you?"
+                                    />
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label><FaEnvelope /> Email (Optional)</label>
+                                    <input
+                                        type="email"
+                                        value={feedbackForm.email}
+                                        onChange={(e) => handleFeedbackChange('email', e.target.value)}
+                                        placeholder="For follow-up questions"
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="submit-feedback-button"
+                                disabled={submittingFeedback || !feedbackForm.title.trim() || !feedbackForm.description.trim()}
+                            >
+                                {submittingFeedback ? (
+                                    <>Submitting...</>
+                                ) : submissionMethod === 'github' ? (
+                                    <>
+                                        <FaGithub /> Submit to GitHub
+                                    </>
+                                ) : (
+                                    <>
+                                        <FaEnvelope /> Send Email
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    )}
+
+                    <div className="feedback-footer">
+                        {submissionMethod === 'github' ? (
+                            <p>
+                                <FaGithub /> This will open a pre-filled GitHub issue for tracking and discussion.
+                                You can also browse existing issues and feature requests on our{' '}
+                                <a 
+                                    href="https://github.com/Virginia-Tech-Helmet-Lab/fall-detection-data-handler/issues" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                >
+                                    GitHub repository
+                                </a>.
+                            </p>
+                        ) : (
+                            <p>
+                                <FaEnvelope /> This will open your email client with a pre-filled message to the VT Helmet Lab team.
+                                The message will also be copied to your clipboard as a backup. You can send the email to:{' '}
+                                <a href="mailto:ethan02@vt.edu">ethan02@vt.edu</a>
+                            </p>
+                        )}
+                    </div>
+                </div>
             </section>
         </div>
     );
