@@ -10,6 +10,7 @@ import './components/vt-utilities.css';
 import DockingBar from './components/DockingBar';
 
 // Import page components
+import Home from './components/Home/Home';
 import DataImport from './components/DataImport/DataImport';
 import NormalizationPanel from './components/Normalization/NormalizationPanel';
 import LabelingInterface from './components/LabelingInterface/LabelingInterface';
@@ -25,9 +26,10 @@ function App() {
       {/* Wrap Routes in a main content container */}
       <div className="main-content">
         <Routes>
-          <Route path="/" element={<DataImport />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/import" element={<DataImport />} />
           <Route path="/normalize" element={<NormalizationPanel />} />
-          <Route path="/label" element={<LabelingInterface />} />
+          <Route path="/labeling" element={<LabelingInterface />} />
           <Route path="/review" element={<ReviewDashboard />} />
           <Route path="/export" element={<DataExport />} />
         </Routes>

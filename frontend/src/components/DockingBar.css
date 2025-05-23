@@ -15,22 +15,22 @@
 .docking-bar-top {
   display: flex;
   align-items: center;
-  padding: 0.7rem 1rem;
+  padding: 1rem 1.5rem;
+  gap: 20px;
 }
 
 .app-logo {
   height: 60px;
-  margin-right: 1.5rem;
 }
 
 .app-title {
   font-size: 1.8rem;
   font-weight: 600;
   margin: 0;
-  flex-grow: 1;
   color: var(--vt-text-on-dark);
   letter-spacing: -0.02em; /* Slightly tighter tracking for Acherus Grotesque */
   line-height: 1.2; /* Improved leading */
+  flex-grow: 1;
 }
 
 .navigation-tabs {
@@ -53,6 +53,9 @@
   background: white;
   clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%);
   border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .nav-tab:hover {
@@ -72,6 +75,28 @@
   background: var(--vt-chicago-maroon);
 }
 
+/* Tab content styling */
+.tab-icon {
+  font-size: 1.1rem;
+  opacity: 0.8;
+}
+
+.tab-text {
+  white-space: nowrap;
+}
+
+/* Disabled tabs */
+.nav-tab.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f0f0f0;
+}
+
+.nav-tab.disabled:hover {
+  background: #f0f0f0;
+  z-index: 0;
+}
+
 /* Adjust the first tab to not have negative margin */
 .nav-tab:first-child {
   margin-left: 0;
@@ -84,16 +109,45 @@
 
 /* For mobile devices */
 @media (max-width: 768px) {
-  .navigation-tabs {
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-  
-  .nav-tab {
+  .docking-bar-top {
     padding: 0.8rem 1rem;
   }
   
+  .navigation-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  
+  .nav-tab {
+    padding: 0.7rem 1.5rem 0.7rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .tab-icon {
+    font-size: 1rem;
+  }
+  
   .app-title {
-    font-size: 1.5rem; /* Slightly smaller on mobile */
+    font-size: 1.4rem; /* Slightly smaller on mobile */
+  }
+  
+  .app-logo {
+    height: 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-title {
+    font-size: 1.2rem;
+  }
+  
+  .nav-tab {
+    padding: 0.6rem 1.2rem 0.6rem 0.8rem;
+  }
+  
+  .tab-text {
+    font-size: 0.85rem;
   }
 }
