@@ -1,6 +1,7 @@
 import subprocess
 import os
 import logging
+import shutil
 
 def normalize_video(input_path, output_path, resolution='224x224', framerate=30, 
                    brightness=1.0, contrast=1.0, saturation=1.0):
@@ -19,6 +20,18 @@ def normalize_video(input_path, output_path, resolution='224x224', framerate=30,
     Returns:
         True if successful, raises an exception otherwise
     """
+    # Check if FFmpeg is available
+    if not shutil.which('ffmpeg'):
+        logging.warning("FFmpeg not found. Video normalization is not available.")
+        logging.warning("Please install FFmpeg from: https://ffmpeg.org/download.html")
+        # Copy the original file as a fallback
+        try:
+            shutil.copy2(input_path, output_path)
+            return True
+        except Exception as e:
+            logging.error(f"Error copying file: {str(e)}")
+            raise RuntimeError("FFmpeg is required for video normalization. Please install FFmpeg.")
+    
     try:
         # Parse resolution
         width, height = resolution.split('x')
@@ -44,7 +57,7 @@ def normalize_video(input_path, output_path, resolution='224x224', framerate=30,
     except subprocess.CalledProcessError as e:
         logging.error(f"FFmpeg error: {e.stderr.decode()}")
         raise RuntimeError(f"Failed to normalize video: {e.stderr.decode()}")
-    except Exception as e:
+    except (Exception, FileNotFoundError) as e:
         logging.error(f"Normalization error: {str(e)}")
         raise RuntimeError(f"Failed to normalize video: {str(e)}")
 
@@ -52,6 +65,13 @@ def generate_preview(input_path, output_path, settings):
     """
     Generate a shorter preview version of the video with normalization settings applied
     """
+    # Check if FFmpeg is available
+    if not shutil.which('ffmpeg'):
+        logging.warning("FFmpeg not found. Preview generation is not available.")
+        logging.warning("Please install FFmpeg from: https://ffmpeg.org/download.html")
+        # Return a simple message instead of failing
+        raise RuntimeError("FFmpeg is required for preview generation. Please install FFmpeg to use this feature.")
+    
     try:
         # Parse settings
         resolution = settings.get('resolution', '224x224')
@@ -84,6 +104,6 @@ def generate_preview(input_path, output_path, settings):
     except subprocess.CalledProcessError as e:
         logging.error(f"FFmpeg preview generation error: {e.stderr.decode()}")
         raise RuntimeError(f"Failed to generate preview: {e.stderr.decode()}")
-    except Exception as e:
+    except (Exception, FileNotFoundError) as e:
         logging.error(f"Preview generation error: {str(e)}")
         raise RuntimeError(f"Failed to generate preview: {str(e)}")

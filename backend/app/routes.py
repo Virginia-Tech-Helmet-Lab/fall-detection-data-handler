@@ -8,10 +8,12 @@ from werkzeug.utils import secure_filename
 import time
 from urllib.parse import unquote
 import numpy as np
+from datetime import datetime
 import cv2
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import traceback
+import json
 import io
 import sys
 from flask_cors import CORS, cross_origin
@@ -161,7 +163,13 @@ if not api_routes_registered:
             
             return jsonify({'preview_filename': f'preview/{preview_filename}'})
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            error_msg = str(e)
+            if "FFmpeg" in error_msg:
+                return jsonify({
+                    'error': 'Video normalization requires FFmpeg. Please install FFmpeg to use this feature.',
+                    'details': error_msg
+                }), 500
+            return jsonify({'error': error_msg}), 500
 
     # Add these routes to properly serve static files with correct MIME types
     @api_bp.route('/static/<path:filename>')
@@ -214,7 +222,13 @@ if not api_routes_registered:
             
             return jsonify({'success': True, 'normalized_filename': normalized_filename})
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            error_msg = str(e)
+            if "FFmpeg" in error_msg:
+                return jsonify({
+                    'error': 'Video normalization requires FFmpeg. Please install FFmpeg to use this feature.',
+                    'details': error_msg
+                }), 500
+            return jsonify({'error': error_msg}), 500
 
     @api_bp.route('/normalize-all', methods=['POST'])
     def normalize_all_videos():
@@ -757,6 +771,277 @@ if not api_routes_registered:
         except Exception as e:
             logger.error(f"Error completing review: {str(e)}", exc_info=True)
             db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/export/stats', methods=['GET'])
+    def get_export_stats():
+        """Get statistics about data available for export"""
+        try:
+            from .models import Video, TemporalAnnotation, BoundingBoxAnnotation
+            
+            confirmed_videos = Video.query.filter_by(status='confirmed').count()
+            all_videos = Video.query.count()
+            
+            # Count fall events
+            fall_events = TemporalAnnotation.query.filter_by(label='Fall').count()
+            total_annotations = TemporalAnnotation.query.count()
+            
+            # Count bounding boxes
+            bounding_boxes = BoundingBoxAnnotation.query.count()
+            
+            return jsonify({
+                'confirmedVideos': confirmed_videos,
+                'totalVideos': all_videos,
+                'fallEvents': fall_events,
+                'totalAnnotations': total_annotations,
+                'boundingBoxes': bounding_boxes
+            })
+        except Exception as e:
+            logger.error(f"Error getting export stats: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/export', methods=['POST'])
+    def export_data():
+        """Export annotation data in various formats"""
+        try:
+            data = request.json
+            format_type = data.get('format', 'json')
+            options = data.get('options', {})
+            
+            from .models import Video, TemporalAnnotation, BoundingBoxAnnotation
+            
+            # Query data based on options
+            video_query = Video.query
+            if options.get('onlyConfirmed', True):
+                video_query = video_query.filter_by(status='confirmed')
+            
+            videos = video_query.all()
+            
+            if format_type == 'json':
+                # Create JSON export
+                export_data = []
+                for video in videos:
+                    video_data = {
+                        'video_id': video.video_id,
+                        'filename': video.filename,
+                        'resolution': video.resolution,
+                        'framerate': video.framerate,
+                        'duration': video.duration,
+                        'status': video.status,
+                        'temporal_annotations': [],
+                        'bounding_box_annotations': []
+                    }
+                    
+                    # Add temporal annotations
+                    temporal_anns = TemporalAnnotation.query.filter_by(video_id=video.video_id).all()
+                    for ann in temporal_anns:
+                        video_data['temporal_annotations'].append({
+                            'label': ann.label,
+                            'start_time': ann.start_time,
+                            'end_time': ann.end_time,
+                            'start_frame': ann.start_frame,
+                            'end_frame': ann.end_frame
+                        })
+                    
+                    # Add bounding box annotations
+                    bbox_anns = BoundingBoxAnnotation.query.filter_by(video_id=video.video_id).all()
+                    for bbox in bbox_anns:
+                        video_data['bounding_box_annotations'].append({
+                            'frame_index': bbox.frame_index,
+                            'x': bbox.x,
+                            'y': bbox.y,
+                            'width': bbox.width,
+                            'height': bbox.height,
+                            'part_label': bbox.part_label
+                        })
+                    
+                    export_data.append(video_data)
+                
+                return jsonify(export_data)
+                
+            elif format_type == 'csv':
+                # Create CSV export
+                import csv
+                import io
+                from flask import Response
+                
+                # Create CSV in memory
+                output = io.StringIO()
+                writer = csv.writer(output)
+                
+                # Write headers
+                writer.writerow(['video_id', 'filename', 'resolution', 'framerate', 'duration', 
+                               'annotation_type', 'label', 'start_time', 'end_time', 
+                               'start_frame', 'end_frame', 'frame_index', 'x', 'y', 
+                               'width', 'height', 'part_label'])
+                
+                for video in videos:
+                    # Write temporal annotations
+                    temporal_anns = TemporalAnnotation.query.filter_by(video_id=video.video_id).all()
+                    for ann in temporal_anns:
+                        writer.writerow([
+                            video.video_id, video.filename, video.resolution, 
+                            video.framerate, video.duration, 'temporal',
+                            ann.label, ann.start_time, ann.end_time,
+                            ann.start_frame, ann.end_frame, '', '', '', '', '', ''
+                        ])
+                    
+                    # Write bounding box annotations
+                    bbox_anns = BoundingBoxAnnotation.query.filter_by(video_id=video.video_id).all()
+                    for bbox in bbox_anns:
+                        writer.writerow([
+                            video.video_id, video.filename, video.resolution,
+                            video.framerate, video.duration, 'bounding_box',
+                            '', '', '', '', '', bbox.frame_index, bbox.x, bbox.y,
+                            bbox.width, bbox.height, bbox.part_label
+                        ])
+                
+                # Create response
+                output.seek(0)
+                return Response(
+                    output.getvalue(),
+                    mimetype='text/csv',
+                    headers={"Content-Disposition": "attachment;filename=export.csv"}
+                )
+                
+            else:
+                # For COCO and YOLO formats, return placeholder
+                return jsonify({
+                    'error': f'{format_type} format export not yet implemented'
+                }), 501
+                
+        except Exception as e:
+            logger.error(f"Error exporting data: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/export/ml-dataset', methods=['POST'])
+    def export_ml_dataset():
+        """Export data in ML-ready format with train/val/test splits"""
+        try:
+            data = request.json
+            ml_options = data.get('mlOptions', {})
+            
+            from .models import Video, TemporalAnnotation, BoundingBoxAnnotation
+            import random
+            import zipfile
+            from io import BytesIO
+            
+            # Get videos
+            videos = Video.query.filter_by(status='confirmed').all()
+            
+            # Split videos into train/val/test
+            split_ratio = ml_options.get('splitRatio', {'train': 0.7, 'val': 0.15, 'test': 0.15})
+            split_strategy = ml_options.get('splitStrategy', 'random')
+            
+            # Shuffle videos for random split
+            if split_strategy == 'random':
+                random.shuffle(videos)
+            
+            total_videos = len(videos)
+            train_count = int(total_videos * split_ratio['train'])
+            val_count = int(total_videos * split_ratio['val'])
+            
+            train_videos = videos[:train_count]
+            val_videos = videos[train_count:train_count + val_count]
+            test_videos = videos[train_count + val_count:]
+            
+            # Create dataset structure
+            dataset = {
+                'train': {'videos': [], 'total_annotations': 0},
+                'val': {'videos': [], 'total_annotations': 0},
+                'test': {'videos': [], 'total_annotations': 0}
+            }
+            
+            # Process each split
+            for split_name, split_videos in [('train', train_videos), ('val', val_videos), ('test', test_videos)]:
+                for video in split_videos:
+                    video_data = {
+                        'video_id': video.video_id,
+                        'filename': video.filename,
+                        'resolution': video.resolution,
+                        'framerate': video.framerate,
+                        'duration': video.duration,
+                        'temporal_annotations': [],
+                        'bounding_box_annotations': []
+                    }
+                    
+                    # Get annotations
+                    temporal_anns = TemporalAnnotation.query.filter_by(video_id=video.video_id).all()
+                    for ann in temporal_anns:
+                        video_data['temporal_annotations'].append({
+                            'label': ann.label,
+                            'start_time': ann.start_time,
+                            'end_time': ann.end_time,
+                            'start_frame': ann.start_frame,
+                            'end_frame': ann.end_frame
+                        })
+                    
+                    bbox_anns = BoundingBoxAnnotation.query.filter_by(video_id=video.video_id).all()
+                    for bbox in bbox_anns:
+                        video_data['bounding_box_annotations'].append({
+                            'frame_index': bbox.frame_index,
+                            'x': bbox.x,
+                            'y': bbox.y,
+                            'width': bbox.width,
+                            'height': bbox.height,
+                            'part_label': bbox.part_label
+                        })
+                    
+                    dataset[split_name]['videos'].append(video_data)
+                    dataset[split_name]['total_annotations'] += len(temporal_anns)
+            
+            # Create response based on format
+            if ml_options.get('outputFormat') == 'folder':
+                # Create a zip file with folder structure
+                zip_buffer = BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    # Add split JSON files
+                    for split_name in ['train', 'val', 'test']:
+                        json_data = json.dumps(dataset[split_name]['videos'], indent=2)
+                        zip_file.writestr(f'{split_name}_annotations.json', json_data)
+                    
+                    # Add dataset info
+                    info = {
+                        'dataset_name': ml_options.get('datasetName', 'FallDetectionDataset'),
+                        'splits': {
+                            'train': len(train_videos),
+                            'val': len(val_videos),
+                            'test': len(test_videos)
+                        },
+                        'preprocessing': ml_options.get('preprocessing', {}),
+                        'created_at': datetime.now().isoformat()
+                    }
+                    zip_file.writestr('dataset_info.json', json.dumps(info, indent=2))
+                    
+                    # Add README
+                    readme = f"""# {ml_options.get('datasetName', 'Fall Detection Dataset')}
+
+## Dataset Structure
+- train_annotations.json: Training set annotations ({len(train_videos)} videos)
+- val_annotations.json: Validation set annotations ({len(val_videos)} videos)
+- test_annotations.json: Test set annotations ({len(test_videos)} videos)
+- dataset_info.json: Dataset metadata and configuration
+
+## Usage
+Use the generated PyTorch dataset class to load this data.
+"""
+                    zip_file.writestr('README.md', readme)
+                
+                zip_buffer.seek(0)
+                
+                return Response(
+                    zip_buffer.getvalue(),
+                    mimetype='application/zip',
+                    headers={
+                        'Content-Disposition': f'attachment; filename=ml_dataset_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
+                    }
+                )
+            else:
+                # Return JSON response
+                return jsonify(dataset)
+                
+        except Exception as e:
+            logger.error(f"Error exporting ML dataset: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     @api_bp.errorhandler(404)

@@ -11,7 +11,8 @@ const DockingBar = () => {
     { name: 'Import Data', path: '/' },
     { name: 'Normalize', path: '/normalize' },
     { name: 'Label', path: '/label' },
-    { name: 'Review', path: '/review' }
+    { name: 'Review', path: '/review' },
+    { name: 'Export', path: '/export' }
   ];
   
   return (

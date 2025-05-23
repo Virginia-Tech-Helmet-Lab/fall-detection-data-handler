@@ -13,14 +13,24 @@ This guide will help you set up the Fall Detection Data Handler on Windows.
 - LTS version recommended
 
 ### 3. FFmpeg (Required for video processing)
-- Download from [ffmpeg.org/download.html](https://ffmpeg.org/download.html)
-- Choose "Windows builds by BtbN"
-- Extract the zip file to `C:\ffmpeg`
-- Add `C:\ffmpeg\bin` to your system PATH:
-  1. Open System Properties → Advanced → Environment Variables
-  2. Edit the "Path" variable
-  3. Add `C:\ffmpeg\bin`
-  4. Click OK and restart Command Prompt
+
+**Quick Install (Recommended):**
+1. Download from [gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
+2. Click "release builds" → Download the "full" build
+3. Extract the zip to `C:\ffmpeg`
+4. Add to PATH:
+   - Press `Win + X` → Select "System"
+   - Click "Advanced system settings"
+   - Click "Environment Variables"
+   - Under "System variables", find and select "Path", click "Edit"
+   - Click "New" and add: `C:\ffmpeg\bin`
+   - Click "OK" on all windows
+5. Restart Command Prompt and verify: `ffmpeg -version`
+
+**Alternative: Using Chocolatey (if installed):**
+```cmd
+choco install ffmpeg
+```
 
 ### 4. Visual C++ Redistributables
 - Required for OpenCV

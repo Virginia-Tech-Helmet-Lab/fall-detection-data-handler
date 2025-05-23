@@ -26,6 +26,39 @@ def save_file(file, upload_folder=None):
 
 def extract_metadata(video_path):
     """Extract video metadata using ffprobe."""
+    import shutil
+    
+    # Check if FFmpeg is available
+    if not shutil.which('ffprobe'):
+        logging.warning("FFprobe not found. Using OpenCV for metadata extraction.")
+        # Fallback to OpenCV for basic metadata
+        try:
+            cap = cv2.VideoCapture(video_path)
+            if cap.isOpened():
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                framerate = cap.get(cv2.CAP_PROP_FPS)
+                frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                duration = frame_count / framerate if framerate > 0 else 0
+                cap.release()
+                
+                return {
+                    'resolution': f"{width}x{height}",
+                    'width': width,
+                    'height': height,
+                    'framerate': round(framerate, 2) if framerate > 0 else 0,
+                    'duration': duration
+                }
+        except Exception as e:
+            logging.error(f"Error using OpenCV for metadata: {str(e)}")
+            return {
+                'resolution': 'unknown',
+                'width': 0,
+                'height': 0,
+                'framerate': 0,
+                'duration': 0
+            }
+    
     try:
         # Use ffprobe to get video information
         cmd = [
@@ -75,8 +108,29 @@ def extract_metadata(video_path):
             'framerate': framerate,
             'duration': duration
         }
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         logging.error(f"Metadata extraction error: {str(e)}")
+        # Try OpenCV as fallback
+        try:
+            cap = cv2.VideoCapture(video_path)
+            if cap.isOpened():
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                framerate = cap.get(cv2.CAP_PROP_FPS)
+                frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                duration = frame_count / framerate if framerate > 0 else 0
+                cap.release()
+                
+                return {
+                    'resolution': f"{width}x{height}",
+                    'width': width,
+                    'height': height,
+                    'framerate': round(framerate, 2) if framerate > 0 else 0,
+                    'duration': duration
+                }
+        except:
+            pass
+        
         # Return default values instead of raising an error
         return {
             'resolution': 'unknown',
@@ -100,6 +154,15 @@ def ensure_browser_compatible(filename):
     Ensures a video is in a browser-compatible format (MP4 with H.264 video codec)
     Returns the path to the browser-compatible version
     """
+    import shutil
+    import logging
+    
+    # Check if FFmpeg is available
+    if not shutil.which('ffmpeg'):
+        logging.warning("FFmpeg not found. Video conversion skipped. Install FFmpeg for better compatibility.")
+        print("WARNING: FFmpeg not installed. Videos may not play in browser. Install from: https://ffmpeg.org/download.html", file=sys.stderr)
+        return filename
+    
     upload_folder = current_app.config['UPLOAD_FOLDER']
     input_path = os.path.join(upload_folder, filename)
     
@@ -120,7 +183,7 @@ def ensure_browser_compatible(filename):
         # If it's already H.264, we don't need to convert it
         if codec == 'h264':
             return filename
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         # If ffprobe fails, we'll convert the file to be safe
         pass
     
@@ -141,7 +204,7 @@ def ensure_browser_compatible(filename):
         ]
         subprocess.run(cmd, check=True, capture_output=True)
         return compatible_filename
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         logging.error(f"Error creating browser-compatible version: {e.stderr.decode()}")
         # Return original filename if conversion fails
         return filename

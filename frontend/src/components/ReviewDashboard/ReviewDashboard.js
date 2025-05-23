@@ -136,8 +136,8 @@ const ReviewDashboard = () => {
         
         try {
             await axios.post('http://localhost:5000/api/review/complete');
-            alert('Review completed successfully! You can now start a new batch or export the results.');
-            navigate('/');
+            alert('Review completed successfully! Redirecting to export page...');
+            navigate('/export');
         } catch (error) {
             console.error("Error completing review:", error);
             alert('Failed to complete review. Please try again.');

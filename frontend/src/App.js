@@ -14,6 +14,7 @@ import DataImport from './components/DataImport/DataImport';
 import NormalizationPanel from './components/Normalization/NormalizationPanel';
 import LabelingInterface from './components/LabelingInterface/LabelingInterface';
 import ReviewDashboard from './components/ReviewDashboard/ReviewDashboard';
+import DataExport from './components/DataExport/DataExport';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="/normalize" element={<NormalizationPanel />} />
           <Route path="/label" element={<LabelingInterface />} />
           <Route path="/review" element={<ReviewDashboard />} />
+          <Route path="/export" element={<DataExport />} />
         </Routes>
       </div>
     </Router>

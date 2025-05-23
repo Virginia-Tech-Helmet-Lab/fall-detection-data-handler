@@ -40,26 +40,46 @@
 }
 
 .nav-tab {
-  padding: 0.8rem 1.5rem;
+  position: relative;
+  padding: 0.8rem 2rem 0.8rem 1.5rem;
   color: var(--vt-text-primary);
   text-decoration: none;
-  border-bottom: 3px solid transparent;
   font-weight: 500;
   transition: all 0.2s ease;
   cursor: pointer;
   letter-spacing: -0.01em; /* Slightly tighter tracking */
   font-size: 1rem;
+  margin-right: -15px; /* Allow tabs to overlap for flag effect */
+  background: white;
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%);
+  border: none;
 }
 
 .nav-tab:hover {
   background-color: rgba(232, 119, 34, 0.1); /* Light burnt orange */
-  border-bottom-color: var(--vt-burnt-orange);
+  z-index: 1;
 }
 
 .nav-tab.active {
-  color: var(--vt-chicago-maroon);
+  background: var(--vt-chicago-maroon);
+  color: white;
   font-weight: bold;
-  border-bottom-color: var(--vt-chicago-maroon);
+  z-index: 2;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-tab.active:hover {
+  background: var(--vt-chicago-maroon);
+}
+
+/* Adjust the first tab to not have negative margin */
+.nav-tab:first-child {
+  margin-left: 0;
+}
+
+/* Ensure the last tab has proper spacing */
+.nav-tab:last-child {
+  margin-right: 20px;
 }
 
 /* For mobile devices */
