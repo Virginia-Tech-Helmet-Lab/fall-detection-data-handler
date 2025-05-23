@@ -55,11 +55,22 @@ class User(UserMixin, db.Model):
     
     def to_dict(self):
         """Convert user to dictionary (excluding sensitive data)"""
+        # Handle role conversion safely
+        role_value = self.role
+        if isinstance(self.role, UserRole):
+            role_value = self.role.value
+        elif isinstance(self.role, str):
+            # Convert uppercase enum values to lowercase
+            if self.role in ['ADMIN', 'ANNOTATOR', 'REVIEWER']:
+                role_value = self.role.lower()
+            else:
+                role_value = self.role
+        
         return {
             'user_id': self.user_id,
             'username': self.username,
             'email': self.email,
-            'role': self.role.value if isinstance(self.role, UserRole) else self.role,
+            'role': role_value,
             'full_name': self.full_name,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,

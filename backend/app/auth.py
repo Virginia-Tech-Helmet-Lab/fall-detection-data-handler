@@ -38,18 +38,35 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
+def jwt_role_required(*roles):
+    """Decorator to require specific user roles using JWT"""
+    def decorator(f):
+        @wraps(f)
+        @jwt_required()
+        def decorated_function(*args, **kwargs):
+            user_id = get_jwt_identity()
+            user = User.query.get(int(user_id))
+            
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            # Handle enum roles
+            user_role_str = user.role.value if hasattr(user.role, 'value') else str(user.role)
+            if user_role_str not in roles:
+                return jsonify({'error': 'Insufficient permissions'}), 403
+            
+            # Make user available to the route
+            request.current_user = user
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
 @auth_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
+    """User login endpoint"""
     # Handle CORS preflight
     if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-    
-    """User login endpoint"""
+        return '', 204
     logger.info(f"Login attempt - Method: {request.method}, Headers: {dict(request.headers)}")
     
     try:
@@ -90,24 +107,18 @@ def login():
         login_user(user, remember=True)
         
         # Create JWT token for API access
-        access_token = create_access_token(identity=user.user_id)
+        access_token = create_access_token(identity=str(user.user_id))
         
         # Update last active timestamp
         user.update_last_active()
         
         logger.info(f"User {user.username} logged in successfully")
         
-        response = jsonify({
+        return jsonify({
             'message': 'Login successful',
             'user': user.to_dict(),
             'access_token': access_token
-        })
-        
-        # Add CORS headers to response
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        
-        return response, 200
+        }), 200
         
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
@@ -116,16 +127,12 @@ def login():
         return jsonify({'error': 'Login failed', 'details': str(e)}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
-@login_required
+@jwt_required(optional=True)
 def logout():
     """User logout endpoint"""
     try:
-        username = current_user.username
-        logout_user()
-        session.clear()
-        
-        logger.info(f"User {username} logged out successfully")
-        
+        # JWT tokens are stateless, so we just return success
+        # The client should remove the token from storage
         return jsonify({'message': 'Logout successful'}), 200
         
     except Exception as e:
@@ -133,15 +140,21 @@ def logout():
         return jsonify({'error': 'Logout failed'}), 500
 
 @auth_bp.route('/me', methods=['GET'])
+@jwt_required(optional=True)
 def get_current_user():
     """Get current user information"""
     try:
-        # Check if user is authenticated without triggering redirect
-        if not current_user.is_authenticated:
+        # Get user from JWT
+        user_id = get_jwt_identity()
+        if not user_id:
             return jsonify({'error': 'Not authenticated', 'authenticated': False}), 401
+        
+        user = User.query.get(int(user_id))
+        if not user:
+            return jsonify({'error': 'User not found', 'authenticated': False}), 404
             
         return jsonify({
-            'user': current_user.to_dict(),
+            'user': user.to_dict(),
             'authenticated': True
         }), 200
         
@@ -149,10 +162,39 @@ def get_current_user():
         logger.error(f"Get current user error: {str(e)}")
         return jsonify({'error': 'Failed to get user information'}), 500
 
-@auth_bp.route('/register', methods=['POST'])
-@role_required('admin')
+@auth_bp.route('/register', methods=['POST', 'OPTIONS'])
+@jwt_required(optional=True)
 def register():
     """Admin-only user registration endpoint"""
+    logger.info(f"Register endpoint called - Method: {request.method}")
+    
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    # For POST requests, check JWT authentication
+    user_id = get_jwt_identity()
+    if not user_id:
+        logger.error("No JWT identity found")
+        return jsonify({'error': 'Authentication required'}), 401
+        
+    current_admin = User.query.get(int(user_id))
+    if not current_admin:
+        logger.error(f"User {user_id} not found")
+        return jsonify({'error': 'User not found'}), 404
+        
+    # Check if user is admin (handle both string and enum)
+    from .models import UserRole
+    is_admin = (current_admin.role == UserRole.ADMIN or 
+                (hasattr(current_admin.role, 'value') and current_admin.role.value == 'admin') or
+                str(current_admin.role) == 'admin')
+    
+    if not is_admin:
+        logger.error(f"User {user_id} has role {current_admin.role}, not admin")
+        return jsonify({'error': 'Admin access required'}), 403
+        
+    logger.info(f"Register endpoint called by user {current_admin.username}")
+    
     try:
         data = request.json
         if not data:
@@ -176,25 +218,42 @@ def register():
             return jsonify({'error': f'Role must be one of: {valid_roles}'}), 400
         
         # Check if user already exists
-        if User.query.filter_by(username=username).first():
-            return jsonify({'error': 'Username already exists'}), 409
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            logger.warning(f"Username {username} already exists")
+            return jsonify({'error': f'Username "{username}" already exists'}), 409
         
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email already exists'}), 409
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email:
+            logger.warning(f"Email {email} already exists")
+            return jsonify({'error': f'Email "{email}" already exists'}), 409
         
-        # Create new user
+        # Create new user with proper enum
+        from .models import UserRole
+        
+        # Convert string role to enum
+        role_enum = None
+        if role == 'admin':
+            role_enum = UserRole.ADMIN
+        elif role == 'annotator':
+            role_enum = UserRole.ANNOTATOR
+        elif role == 'reviewer':
+            role_enum = UserRole.REVIEWER
+        else:
+            return jsonify({'error': f'Invalid role: {role}'}), 400
+            
         user = User(
             username=username,
             email=email,
             full_name=full_name,
-            role=role
+            role=role_enum
         )
         user.set_password(password)
         
         db.session.add(user)
         db.session.commit()
         
-        logger.info(f"New user created: {username} ({role}) by {current_user.username}")
+        logger.info(f"New user created: {username} ({role}) by {current_admin.username}")
         
         return jsonify({
             'message': 'User created successfully',
@@ -204,15 +263,51 @@ def register():
     except Exception as e:
         db.session.rollback()
         logger.error(f"User registration error: {str(e)}")
-        return jsonify({'error': 'User registration failed'}), 500
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        # Check for specific database errors
+        error_message = str(e)
+        if 'UNIQUE constraint failed' in error_message or 'Duplicate entry' in error_message:
+            if 'username' in error_message:
+                return jsonify({'error': 'Username already exists'}), 409
+            elif 'email' in error_message:
+                return jsonify({'error': 'Email already exists'}), 409
+        
+        return jsonify({'error': error_message}), 422
 
 @auth_bp.route('/users', methods=['GET'])
-@role_required('admin')
+@jwt_role_required('admin')
 def get_users():
     """Get all users (admin only)"""
     try:
-        users = User.query.all()
-        users_data = [user.to_dict() for user in users]
+        # Use SQLAlchemy ORM but handle role conversion in Python
+        users = User.query.order_by(User.created_at.desc()).all()
+        
+        users_data = []
+        for user in users:
+            # Use the safe to_dict method that handles enum conversion
+            try:
+                user_dict = user.to_dict()
+                users_data.append(user_dict)
+            except Exception as user_error:
+                # If to_dict fails, create dict manually with safe conversions
+                role_value = user.role
+                if hasattr(user.role, 'value'):
+                    role_value = user.role.value
+                elif isinstance(user.role, str) and user.role in ['ADMIN', 'ANNOTATOR', 'REVIEWER']:
+                    role_value = user.role.lower()
+                
+                users_data.append({
+                    'user_id': user.user_id,
+                    'username': user.username,
+                    'email': user.email,
+                    'role': role_value,
+                    'full_name': user.full_name,
+                    'is_active': user.is_active,
+                    'created_at': user.created_at.isoformat() if user.created_at else None,
+                    'last_active': user.last_active.isoformat() if user.last_active else None
+                })
         
         return jsonify({
             'users': users_data,
@@ -223,10 +318,30 @@ def get_users():
         logger.error(f"Get users error: {str(e)}")
         return jsonify({'error': 'Failed to get users'}), 500
 
-@auth_bp.route('/users/<int:user_id>', methods=['PUT'])
-@role_required('admin')
+@auth_bp.route('/users/<int:user_id>', methods=['PUT', 'OPTIONS'])
+@jwt_required(optional=True)
 def update_user(user_id):
     """Update user information (admin only)"""
+    # Handle OPTIONS
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    # Get authenticated user
+    admin_id = get_jwt_identity()
+    if not admin_id:
+        return jsonify({'error': 'Authentication required'}), 401
+        
+    current_admin = User.query.get(int(admin_id))
+    if not current_admin:
+        return jsonify({'error': 'User not found'}), 404
+        
+    # Check admin role
+    from .models import UserRole
+    is_admin = (current_admin.role == UserRole.ADMIN or 
+                (hasattr(current_admin.role, 'value') and current_admin.role.value == 'admin'))
+    if not is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
     try:
         user = User.query.get(user_id)
         if not user:
@@ -248,7 +363,7 @@ def update_user(user_id):
         
         db.session.commit()
         
-        logger.info(f"User {user.username} updated by {current_user.username}")
+        logger.info(f"User {user.username} updated by {current_admin.username}")
         
         return jsonify({
             'message': 'User updated successfully',
@@ -260,23 +375,43 @@ def update_user(user_id):
         logger.error(f"Update user error: {str(e)}")
         return jsonify({'error': 'Failed to update user'}), 500
 
-@auth_bp.route('/users/<int:user_id>', methods=['DELETE'])
-@role_required('admin')
+@auth_bp.route('/users/<int:user_id>', methods=['DELETE', 'OPTIONS'])
+@jwt_required(optional=True)
 def delete_user(user_id):
     """Delete user (admin only)"""
+    # Handle OPTIONS
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    # Get authenticated user
+    admin_id = get_jwt_identity()
+    if not admin_id:
+        return jsonify({'error': 'Authentication required'}), 401
+        
+    current_admin = User.query.get(int(admin_id))
+    if not current_admin:
+        return jsonify({'error': 'User not found'}), 404
+        
+    # Check admin role
+    from .models import UserRole
+    is_admin = (current_admin.role == UserRole.ADMIN or 
+                (hasattr(current_admin.role, 'value') and current_admin.role.value == 'admin'))
+    if not is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
     try:
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        if user.user_id == current_user.user_id:
+        if user.user_id == current_admin.user_id:
             return jsonify({'error': 'Cannot delete your own account'}), 400
         
         username = user.username
         db.session.delete(user)
         db.session.commit()
         
-        logger.info(f"User {username} deleted by {current_user.username}")
+        logger.info(f"User {username} deleted by {current_admin.username}")
         
         return jsonify({'message': 'User deleted successfully'}), 200
         

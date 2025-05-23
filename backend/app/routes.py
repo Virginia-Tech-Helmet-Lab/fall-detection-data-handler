@@ -900,9 +900,17 @@ if not api_routes_registered:
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
-    @api_bp.route('/export/stats', methods=['GET'])
+    @api_bp.route('/export/stats', methods=['GET', 'OPTIONS'])
     def get_export_stats():
         """Get statistics about data available for export"""
+        # Handle CORS preflight
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+            return response
+            
         try:
             from .models import Video, TemporalAnnotation, BoundingBoxAnnotation
             

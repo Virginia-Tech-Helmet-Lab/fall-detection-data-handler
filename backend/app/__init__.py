@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
@@ -53,13 +53,8 @@ def create_app(config=None):
         from .models import User
         return User.query.get(int(user_id))
     
-    # Apply CORS with proper configuration
-    CORS(app, 
-         resources={r"/api/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}},
-         supports_credentials=True,
-         allow_headers=["Content-Type", "Authorization"],
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    )
+    # Apply CORS with proper configuration - simplified approach
+    CORS(app, supports_credentials=True)
     
     # Import routes BEFORE registering blueprints
     # This loads all the route handlers onto the blueprints
@@ -71,6 +66,25 @@ def create_app(config=None):
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(auth_bp)  # auth_bp already has /api/auth prefix
     app.register_blueprint(projects_bp)  # projects_bp already has /api/projects prefix
+    
+    # Add a before_request handler to log all requests
+    @app.before_request
+    def log_request_info():
+        app.logger.debug('Headers: %s', request.headers)
+        app.logger.debug('Method: %s', request.method)
+        app.logger.debug('Path: %s', request.path)
+        app.logger.debug('Body: %s', request.get_data())
+    
+    # Add after_request handler to ensure CORS headers
+    @app.after_request
+    def after_request(response):
+        origin = request.headers.get('Origin')
+        if origin in ['http://localhost:3000', 'http://127.0.0.1:3000']:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        return response
     
     with app.app_context():
         # Create database tables

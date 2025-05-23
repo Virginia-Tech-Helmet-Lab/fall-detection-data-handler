@@ -8,7 +8,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from ..models import User, UserRole, ProjectStatus, ProjectMemberRole
 from ..services.project import ProjectService
-from ..auth import require_role
+from ..auth import jwt_role_required
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,8 +36,7 @@ def get_projects():
         return jsonify({'error': 'Failed to fetch projects'}), 500
 
 @projects_bp.route('', methods=['POST'])
-@jwt_required()
-@require_role(UserRole.ADMIN)
+@jwt_role_required('admin')
 def create_project():
     """Create a new project (admin only)"""
     try:
@@ -340,8 +339,7 @@ def distribute_project_videos(project_id):
         return jsonify({'error': 'Failed to distribute videos'}), 500
 
 @projects_bp.route('/<int:project_id>/status', methods=['PUT'])
-@jwt_required()
-@require_role(UserRole.ADMIN)
+@jwt_role_required('admin')
 def update_project_status(project_id):
     """Update project status (admin only)"""
     try:

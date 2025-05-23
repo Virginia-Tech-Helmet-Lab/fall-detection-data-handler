@@ -13,7 +13,6 @@ __pycache__/
 *.tiff
 *.env
 
-
 instance/
 uploads/
 CLAUDE.md
