@@ -153,8 +153,9 @@
 
 .demo-credentials h4 {
     color: #333;
-    margin: 0 0 10px 0;
-    font-size: 1rem;
+    margin: 0 0 15px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
 }
 
 .demo-credentials p {
@@ -166,6 +167,42 @@
 .demo-credentials small {
     color: #999;
     font-size: 0.8rem;
+    display: block;
+    margin-top: 12px;
+}
+
+.test-account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.test-account {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.test-account:hover {
+    border-color: #660000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 0, 0, 0.1);
+}
+
+.test-account p {
+    margin: 8px 0 0 0;
+    font-size: 0.85rem;
+    color: #495057;
+}
+
+.test-account .role-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
 }
 
 /* User Management Styles */
@@ -359,6 +396,10 @@
 
     .users-table table {
         min-width: 600px;
+    }
+    
+    .test-account-grid {
+        grid-template-columns: 1fr;
     }
 }
 

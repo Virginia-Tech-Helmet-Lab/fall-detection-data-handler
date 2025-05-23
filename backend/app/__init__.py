@@ -97,6 +97,50 @@ def create_app(config=None):
                 print(">>> Created default admin user: admin / admin123")
             else:
                 print(f">>> Admin user already exists: {admin_user.username} (role: {admin_user.role})")
+            
+            # Create test users for development
+            test_users = [
+                {
+                    'username': 'annotator1',
+                    'email': 'annotator1@test.com',
+                    'full_name': 'Alice Annotator',
+                    'role': UserRole.ANNOTATOR,
+                    'password': 'test123'
+                },
+                {
+                    'username': 'annotator2',
+                    'email': 'annotator2@test.com',
+                    'full_name': 'Bob Annotator',
+                    'role': UserRole.ANNOTATOR,
+                    'password': 'test123'
+                },
+                {
+                    'username': 'reviewer1',
+                    'email': 'reviewer1@test.com',
+                    'full_name': 'Carol Reviewer',
+                    'role': UserRole.REVIEWER,
+                    'password': 'test123'
+                }
+            ]
+            
+            for user_data in test_users:
+                existing_user = User.query.filter_by(username=user_data['username']).first()
+                if not existing_user:
+                    print(f">>> Creating test user: {user_data['username']} ({user_data['role'].value})")
+                    new_user = User(
+                        username=user_data['username'],
+                        email=user_data['email'],
+                        full_name=user_data['full_name'],
+                        role=user_data['role'],
+                        is_active=True
+                    )
+                    new_user.set_password(user_data['password'])
+                    db.session.add(new_user)
+                else:
+                    print(f">>> Test user already exists: {user_data['username']} ({existing_user.role})")
+            
+            db.session.commit()
+            print(">>> Test users created successfully!")
                 
         except Exception as e:
             print(f">>> Error creating admin user: {str(e)}")

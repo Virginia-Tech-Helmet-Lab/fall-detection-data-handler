@@ -124,9 +124,26 @@ const Login = () => {
 
                 <div className="auth-footer">
                     <div className="demo-credentials">
-                        <h4>Demo Credentials</h4>
-                        <p><strong>Admin:</strong> admin / admin123</p>
-                        <small>Default credentials for testing</small>
+                        <h4>Test Accounts</h4>
+                        <div className="test-account-grid">
+                            <div className="test-account" onClick={() => setFormData({username: 'admin', password: 'admin123'})}>
+                                <span className="role-badge admin">Admin</span>
+                                <p><strong>admin</strong> / admin123</p>
+                            </div>
+                            <div className="test-account" onClick={() => setFormData({username: 'annotator1', password: 'test123'})}>
+                                <span className="role-badge annotator">Annotator</span>
+                                <p><strong>annotator1</strong> / test123</p>
+                            </div>
+                            <div className="test-account" onClick={() => setFormData({username: 'annotator2', password: 'test123'})}>
+                                <span className="role-badge annotator">Annotator</span>
+                                <p><strong>annotator2</strong> / test123</p>
+                            </div>
+                            <div className="test-account" onClick={() => setFormData({username: 'reviewer1', password: 'test123'})}>
+                                <span className="role-badge reviewer">Reviewer</span>
+                                <p><strong>reviewer1</strong> / test123</p>
+                            </div>
+                        </div>
+                        <small>Click any account to auto-fill credentials</small>
                     </div>
                 </div>
             </div>
