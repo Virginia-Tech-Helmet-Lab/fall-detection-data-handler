@@ -281,33 +281,52 @@ def register():
 def get_users():
     """Get all users (admin only)"""
     try:
-        # Use SQLAlchemy ORM but handle role conversion in Python
-        users = User.query.order_by(User.created_at.desc()).all()
+        # Use raw SQL to completely avoid enum conversion issues
+        from sqlalchemy import text
+        result = db.session.execute(text("""
+            SELECT user_id, username, email, role, full_name, is_active, created_at, last_active
+            FROM users
+            ORDER BY created_at DESC
+        """))
         
         users_data = []
-        for user in users:
-            # Use the safe to_dict method that handles enum conversion
-            try:
-                user_dict = user.to_dict()
-                users_data.append(user_dict)
-            except Exception as user_error:
-                # If to_dict fails, create dict manually with safe conversions
-                role_value = user.role
-                if hasattr(user.role, 'value'):
-                    role_value = user.role.value
-                elif isinstance(user.role, str) and user.role in ['ADMIN', 'ANNOTATOR', 'REVIEWER']:
-                    role_value = user.role.lower()
-                
-                users_data.append({
-                    'user_id': user.user_id,
-                    'username': user.username,
-                    'email': user.email,
-                    'role': role_value,
-                    'full_name': user.full_name,
-                    'is_active': user.is_active,
-                    'created_at': user.created_at.isoformat() if user.created_at else None,
-                    'last_active': user.last_active.isoformat() if user.last_active else None
-                })
+        for row in result:
+            # Convert role to lowercase format expected by frontend
+            role_value = row.role
+            if isinstance(role_value, str):
+                # Handle both uppercase enum values and lowercase strings
+                if role_value in ['ADMIN', 'admin']:
+                    role_value = 'admin'
+                elif role_value in ['ANNOTATOR', 'annotator']:
+                    role_value = 'annotator'
+                elif role_value in ['REVIEWER', 'reviewer']:
+                    role_value = 'reviewer'
+            
+            # Handle datetime conversion
+            created_at_str = None
+            if row.created_at:
+                if hasattr(row.created_at, 'isoformat'):
+                    created_at_str = row.created_at.isoformat()
+                else:
+                    created_at_str = str(row.created_at)
+            
+            last_active_str = None
+            if row.last_active:
+                if hasattr(row.last_active, 'isoformat'):
+                    last_active_str = row.last_active.isoformat()
+                else:
+                    last_active_str = str(row.last_active)
+            
+            users_data.append({
+                'user_id': row.user_id,
+                'username': row.username,
+                'email': row.email,
+                'role': role_value,
+                'full_name': row.full_name,
+                'is_active': row.is_active,
+                'created_at': created_at_str,
+                'last_active': last_active_str
+            })
         
         return jsonify({
             'users': users_data,
@@ -408,6 +427,54 @@ def delete_user(user_id):
             return jsonify({'error': 'Cannot delete your own account'}), 400
         
         username = user.username
+        
+        # Handle related data before deletion
+        from .models import TemporalAnnotation, BoundingBoxAnnotation
+        from sqlalchemy import text
+        
+        # Use raw SQL to avoid column errors
+        try:
+            # Check if videos table has assigned_to column
+            result = db.session.execute(text("PRAGMA table_info(videos)"))
+            columns = [row[1] for row in result]
+            
+            if 'assigned_to' in columns:
+                # Unassign videos from this user using raw SQL
+                db.session.execute(
+                    text("UPDATE videos SET assigned_to = NULL WHERE assigned_to = :user_id"),
+                    {"user_id": user_id}
+                )
+        except Exception as e:
+            logger.warning(f"Could not unassign videos: {str(e)}")
+        
+        # Handle annotations - check if columns exist first
+        try:
+            # Check if temporal_annotations has created_by column
+            result = db.session.execute(text("PRAGMA table_info(temporal_annotations)"))
+            columns = [row[1] for row in result]
+            
+            if 'created_by' in columns:
+                db.session.execute(
+                    text("UPDATE temporal_annotations SET created_by = NULL WHERE created_by = :user_id"),
+                    {"user_id": user_id}
+                )
+        except Exception as e:
+            logger.warning(f"Could not update temporal annotations: {str(e)}")
+            
+        try:
+            # Check if bbox_annotations has created_by column
+            result = db.session.execute(text("PRAGMA table_info(bbox_annotations)"))
+            columns = [row[1] for row in result]
+            
+            if 'created_by' in columns:
+                db.session.execute(
+                    text("UPDATE bbox_annotations SET created_by = NULL WHERE created_by = :user_id"),
+                    {"user_id": user_id}
+                )
+        except Exception as e:
+            logger.warning(f"Could not update bbox annotations: {str(e)}")
+        
+        # Now safe to delete user
         db.session.delete(user)
         db.session.commit()
         

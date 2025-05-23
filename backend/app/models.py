@@ -101,7 +101,8 @@ class Project(db.Model):
     # Relationships
     creator = db.relationship('User', backref='created_projects', foreign_keys=[created_by])
     members = db.relationship('ProjectMember', back_populates='project', cascade='all, delete-orphan')
-    videos = db.relationship('Video', back_populates='project')
+    # TODO: Uncomment after running migration script
+    # videos = db.relationship('Video', back_populates='project')
     
     def get_progress_percentage(self):
         """Calculate project completion percentage"""
@@ -203,12 +204,14 @@ class Video(db.Model):
     status = db.Column(db.String(20), nullable=True, default='pending')
     
     # Project association
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'))
-    project = db.relationship('Project', back_populates='videos')
+    # TODO: Uncomment after running migration script
+    # project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'))
+    # project = db.relationship('Project', back_populates='videos')
     
     # Assignment tracking
-    assigned_to = db.Column(db.Integer, db.ForeignKey('users.user_id'))
-    assignee = db.relationship('User', backref='assigned_videos')
+    # TODO: Uncomment after running migration script
+    # assigned_to = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    # assignee = db.relationship('User', backref='assigned_videos')
 
 class TemporalAnnotation(db.Model):
     __tablename__ = 'temporal_annotations'
@@ -221,9 +224,10 @@ class TemporalAnnotation(db.Model):
     label = db.Column(db.String(50), nullable=False)
     
     # Track who created this annotation
-    created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    annotator = db.relationship('User', backref='temporal_annotations')
+    # TODO: Uncomment after running migration script
+    # created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    # created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # annotator = db.relationship('User', backref='temporal_annotations')
 
 class BoundingBoxAnnotation(db.Model):
     __tablename__ = 'bbox_annotations'
@@ -237,6 +241,7 @@ class BoundingBoxAnnotation(db.Model):
     part_label = db.Column(db.String(50))
     
     # Track who created this annotation
-    created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    annotator = db.relationship('User', backref='bbox_annotations')
+    # TODO: Uncomment after running migration script
+    # created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    # created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # annotator = db.relationship('User', backref='bbox_annotations')

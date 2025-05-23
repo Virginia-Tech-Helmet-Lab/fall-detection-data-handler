@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaUserPlus, FaEdit, FaTrash, FaCheck, FaTimes, FaSearch, FaFilter, FaUserShield, FaUserCheck, FaUserClock } from 'react-icons/fa';
+import { 
+    FaUserPlus, FaEdit, FaTrash, FaCheck, FaTimes, FaSearch, FaFilter, 
+    FaUserShield, FaUserCheck, FaUserClock, FaEye, FaEyeSlash, FaKey,
+    FaDownload, FaEnvelope, FaHistory, FaSortUp, FaSortDown, FaSort
+} from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import './UserManagement.css';
 
@@ -22,6 +26,10 @@ const UserManagement = () => {
         active: 0,
         inactive: 0
     });
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [selectedUsers, setSelectedUsers] = useState([]);
+    const [showBulkActions, setShowBulkActions] = useState(false);
+    const [successMessage, setSuccessMessage] = useState(null);
 
     useEffect(() => {
         fetchUsers();
@@ -139,6 +147,93 @@ const UserManagement = () => {
         return date.toLocaleDateString();
     };
 
+    const handleViewUserDetails = (user) => {
+        // Show user details in a modal or expand the row
+        alert(`User Details:\n\nID: ${user.user_id}\nUsername: ${user.username}\nEmail: ${user.email}\nRole: ${user.role}\nCreated: ${new Date(user.created_at).toLocaleString()}\nLast Active: ${user.last_active ? new Date(user.last_active).toLocaleString() : 'Never'}`);
+    };
+
+    const handleResetPassword = async (user) => {
+        if (!window.confirm(`Reset password for ${user.username}?`)) return;
+        
+        try {
+            // Generate a temporary password
+            const tempPassword = `Temp${Math.random().toString(36).slice(-8)}!`;
+            
+            const response = await axios.put(
+                `http://localhost:5000/api/auth/users/${user.user_id}/reset-password`,
+                { temporary_password: tempPassword },
+                {
+                    withCredentials: true,
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                }
+            );
+            
+            alert(`Password reset successful!\n\nTemporary password: ${tempPassword}\n\nPlease share this with the user securely.`);
+        } catch (error) {
+            console.error('Error resetting password:', error);
+            alert('Failed to reset password');
+        }
+    };
+
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedUsers = [...filteredUsers].sort((a, b) => {
+        if (!sortConfig.key) return 0;
+        
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const getSortIcon = (column) => {
+        if (sortConfig.key !== column) return <FaSort />;
+        return sortConfig.direction === 'asc' ? <FaSortUp /> : <FaSortDown />;
+    };
+
+    const handleExportUsers = () => {
+        // Create CSV content
+        const headers = ['Username', 'Email', 'Full Name', 'Role', 'Status', 'Created At', 'Last Active'];
+        const rows = sortedUsers.map(user => [
+            user.username,
+            user.email,
+            user.full_name,
+            user.role,
+            user.is_active ? 'Active' : 'Inactive',
+            new Date(user.created_at).toLocaleDateString(),
+            user.last_active ? new Date(user.last_active).toLocaleDateString() : 'Never'
+        ]);
+        
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+        
+        // Download file
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const handleViewActivityLog = () => {
+        // In a real app, this would open a modal with user activity logs
+        alert('Activity Log feature coming soon!\n\nThis will show:\n• Login history\n• Password changes\n• User modifications\n• System actions');
+    };
+
     if (loading) {
         return (
             <div className="user-management-loading">
@@ -218,12 +313,33 @@ const UserManagement = () => {
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
+                <div className="action-group">
+                    <button 
+                        className="export-btn"
+                        onClick={handleExportUsers}
+                        title="Export user list to CSV"
+                    >
+                        <FaDownload /> Export
+                    </button>
+                    <button 
+                        className="activity-btn"
+                        onClick={handleViewActivityLog}
+                        title="View activity log"
+                    >
+                        <FaHistory /> Activity Log
+                    </button>
+                </div>
             </div>
 
-            {/* Error Message */}
+            {/* Success/Error Messages */}
+            {successMessage && (
+                <div className="success-message">
+                    <FaCheck /> {successMessage}
+                </div>
+            )}
             {error && (
                 <div className="error-message">
-                    <p>{error}</p>
+                    <FaTimes /> {error}
                 </div>
             )}
 
@@ -232,24 +348,36 @@ const UserManagement = () => {
                 <table className="users-table">
                     <thead>
                         <tr>
-                            <th>User</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Last Active</th>
+                            <th onClick={() => handleSort('full_name')} className="sortable">
+                                User {getSortIcon('full_name')}
+                            </th>
+                            <th onClick={() => handleSort('username')} className="sortable">
+                                Username {getSortIcon('username')}
+                            </th>
+                            <th onClick={() => handleSort('email')} className="sortable">
+                                Email {getSortIcon('email')}
+                            </th>
+                            <th onClick={() => handleSort('role')} className="sortable">
+                                Role {getSortIcon('role')}
+                            </th>
+                            <th onClick={() => handleSort('is_active')} className="sortable">
+                                Status {getSortIcon('is_active')}
+                            </th>
+                            <th onClick={() => handleSort('last_active')} className="sortable">
+                                Last Active {getSortIcon('last_active')}
+                            </th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredUsers.length === 0 ? (
+                        {sortedUsers.length === 0 ? (
                             <tr>
                                 <td colSpan="7" className="no-users">
                                     No users found matching your criteria
                                 </td>
                             </tr>
                         ) : (
-                            filteredUsers.map(user => (
+                            sortedUsers.map(user => (
                                 <tr key={user.user_id} className={!user.is_active ? 'inactive' : ''}>
                                     <td>
                                         <div className="user-info">
@@ -281,6 +409,13 @@ const UserManagement = () => {
                                     <td>
                                         <div className="action-buttons">
                                             <button
+                                                className="action-btn view"
+                                                onClick={() => handleViewUserDetails(user)}
+                                                title="View details"
+                                            >
+                                                <FaEye />
+                                            </button>
+                                            <button
                                                 className="action-btn edit"
                                                 onClick={() => setEditingUser(user)}
                                                 title="Edit user"
@@ -288,10 +423,17 @@ const UserManagement = () => {
                                                 <FaEdit />
                                             </button>
                                             <button
+                                                className="action-btn reset-password"
+                                                onClick={() => handleResetPassword(user)}
+                                                title="Reset password"
+                                            >
+                                                <FaKey />
+                                            </button>
+                                            <button
                                                 className="action-btn delete"
                                                 onClick={() => handleDeleteUser(user.user_id)}
                                                 disabled={user.user_id === currentUser?.user_id}
-                                                title="Delete user"
+                                                title={user.user_id === currentUser?.user_id ? "Cannot delete yourself" : "Delete user"}
                                             >
                                                 <FaTrash />
                                             </button>
@@ -312,10 +454,16 @@ const UserManagement = () => {
                         setShowCreateModal(false);
                         setEditingUser(null);
                     }}
-                    onSuccess={() => {
+                    onSuccess={(message) => {
                         setShowCreateModal(false);
                         setEditingUser(null);
-                        fetchUsers();
+                        setSuccessMessage(message || 'User saved successfully!');
+                        // Small delay to ensure backend has processed the change
+                        setTimeout(() => {
+                            fetchUsers();
+                        }, 100);
+                        // Clear success message after 3 seconds
+                        setTimeout(() => setSuccessMessage(null), 3000);
                     }}
                 />
             )}
@@ -398,7 +546,11 @@ const UserModal = ({ user, onClose, onSuccess }) => {
                 console.log('User created successfully:', response.data);
             }
 
-            onSuccess();
+            // Pass success message based on action
+            const successMsg = user 
+                ? `User ${formData.username} updated successfully!`
+                : `User ${formData.username} created successfully!`;
+            onSuccess(successMsg);
         } catch (err) {
             console.error('Error saving user:', err);
             console.error('Error response:', err.response?.data);

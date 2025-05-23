@@ -261,7 +261,12 @@
 }
 
 .role-icon {
-    font-size: 1rem;
+    font-size: 1.5rem;
+}
+
+.role-icon svg {
+    width: 24px;
+    height: 24px;
 }
 
 .role-icon.admin {
@@ -288,6 +293,11 @@
     cursor: pointer;
     font-size: 0.85rem;
     transition: all 0.2s;
+}
+
+.status-toggle svg {
+    width: 20px;
+    height: 20px;
 }
 
 .status-toggle:disabled {
@@ -319,10 +329,10 @@
 }
 
 .action-btn {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     background: #f8f9fa;
     color: #495057;
     cursor: pointer;
@@ -330,25 +340,46 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    font-size: 1.5rem;
+}
+
+.action-btn svg {
+    width: 24px;
+    height: 24px;
 }
 
 .action-btn:hover {
     background: #e9ecef;
+    transform: scale(1.1);
+}
+
+.action-btn.view:hover {
+    background: #17a2b8;
+    color: white;
 }
 
 .action-btn.edit:hover {
-    background: #e3f2fd;
-    color: #1976d2;
+    background: #007bff;
+    color: white;
+}
+
+.action-btn.reset-password:hover {
+    background: #ffc107;
+    color: white;
 }
 
 .action-btn.delete:hover {
-    background: #ffebee;
-    color: #c62828;
+    background: #dc3545;
+    color: white;
 }
 
 .action-btn:disabled {
     cursor: not-allowed;
     opacity: 0.3;
+}
+
+.action-btn:disabled:hover {
+    transform: none;
 }
 
 /* Modal Overlay */
@@ -567,5 +598,92 @@
     
     .stat-value {
         font-size: 2rem;
+    }
+}
+
+/* Action Group (Export, Activity) */
+.action-group {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.export-btn,
+.activity-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: white;
+    color: #333;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.export-btn svg,
+.activity-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.export-btn:hover {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.activity-btn:hover {
+    background: #6c757d;
+    color: white;
+    border-color: #6c757d;
+}
+
+/* Sortable Headers */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 25px;
+}
+
+.sortable:hover {
+    background: #f0f0f0;
+}
+
+.sortable svg {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    color: #999;
+}
+
+/* Success Message */
+.success-message {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 12px 20px;
+    border-radius: 4px;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
