@@ -41,6 +41,21 @@ if not api_routes_registered:
         if not files or files[0].filename == '':
             return jsonify({'error': 'No files selected'}), 400
         
+        # Get optional project_id from form data
+        project_id = request.form.get('project_id')
+        if project_id:
+            try:
+                project_id = int(project_id)
+                # Verify project exists
+                from .models import Project
+                project = Project.query.get(project_id)
+                if not project:
+                    return jsonify({'error': f'Project {project_id} not found'}), 404
+            except ValueError:
+                return jsonify({'error': 'Invalid project_id'}), 400
+        else:
+            project_id = None
+        
         upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
         os.makedirs(upload_folder, exist_ok=True)
         
@@ -71,9 +86,15 @@ if not api_routes_registered:
                     filename=web_filename,  # Use web-compatible filename
                     resolution=metadata.get('resolution', 'unknown'),
                     framerate=metadata.get('framerate', 0),
-                    duration=metadata.get('duration', 0)
+                    duration=metadata.get('duration', 0),
+                    project_id=project_id  # Associate with project if provided
                 )
                 db.session.add(video)
+                
+                # Update project statistics if video is assigned to a project
+                if project_id:
+                    project.total_videos = Video.query.filter_by(project_id=project_id).count() + 1
+                    project.last_activity = datetime.utcnow()
                 
                 results.append({
                     'filename': web_filename,
