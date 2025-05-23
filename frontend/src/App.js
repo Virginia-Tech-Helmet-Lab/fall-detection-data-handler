@@ -6,6 +6,11 @@ import './components/vt-theme.css';
 import './components/vt-global.css';
 import './components/vt-utilities.css';
 
+// Import authentication components
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
+import Login from './components/Auth/Login';
+
 // Import DockingBar component
 import DockingBar from './components/DockingBar';
 
@@ -19,22 +24,35 @@ import DataExport from './components/DataExport/DataExport';
 
 function App() {
   return (
-    <Router>
-      {/* Add DockingBar here, outside Routes but inside Router */}
-      <DockingBar />
-      
-      {/* Wrap Routes in a main content container */}
-      <div className="main-content">
+    <AuthProvider>
+      <Router>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/import" element={<DataImport />} />
-          <Route path="/normalize" element={<NormalizationPanel />} />
-          <Route path="/labeling" element={<LabelingInterface />} />
-          <Route path="/review" element={<ReviewDashboard />} />
-          <Route path="/export" element={<DataExport />} />
+          {/* Public route */}
+          <Route path="/login" element={<Login />} />
+          
+          {/* Protected routes */}
+          <Route path="*" element={
+            <ProtectedRoute>
+              <DockingBar />
+              <div className="main-content">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/import" element={<DataImport />} />
+                  <Route path="/normalize" element={<NormalizationPanel />} />
+                  <Route path="/labeling" element={<LabelingInterface />} />
+                  <Route path="/review" element={
+                    <ProtectedRoute requiredRole="reviewer">
+                      <ReviewDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/export" element={<DataExport />} />
+                </Routes>
+              </div>
+            </ProtectedRoute>
+          } />
         </Routes>
-      </div>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 }
 
