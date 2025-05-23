@@ -190,6 +190,61 @@ class ProjectService:
             return 0, str(e)
     
     @staticmethod
+    def distribute_specific_videos(project_id: int, video_ids: List[int], member_ids: List[int]) -> Tuple[Dict[int, int], Optional[str]]:
+        """
+        Distribute specific videos among members
+        
+        Args:
+            project_id: Project ID
+            video_ids: List of video IDs to distribute
+            member_ids: List of member user IDs
+            
+        Returns:
+            Tuple of (assignment_dict, error_message)
+            assignment_dict maps user_id to number of videos assigned
+        """
+        try:
+            # Validate videos belong to project and are unassigned
+            videos = Video.query.filter(
+                Video.video_id.in_(video_ids),
+                Video.project_id == project_id,
+                Video.assigned_to.is_(None)
+            ).all()
+            
+            if not videos:
+                return {}, "No valid unassigned videos found"
+            
+            if not member_ids:
+                return {}, "No members specified"
+            
+            # Distribute videos in round-robin fashion
+            assignments = {member_id: 0 for member_id in member_ids}
+            
+            for i, video in enumerate(videos):
+                member_id = member_ids[i % len(member_ids)]
+                video.assigned_to = member_id
+                assignments[member_id] += 1
+                
+                # Update member's assigned count
+                membership = ProjectMember.query.filter_by(
+                    project_id=project_id,
+                    user_id=member_id
+                ).first()
+                
+                if membership:
+                    membership.videos_assigned += 1
+            
+            db.session.commit()
+            
+            logger.info(f"Distributed {len(videos)} specific videos among {len(member_ids)} members")
+            return assignments, None
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error distributing specific videos: {str(e)}")
+            return {}, str(e)
+    
+    @staticmethod
     def distribute_videos_equally(project_id: int, member_ids: List[int]) -> Tuple[Dict[int, int], Optional[str]]:
         """
         Distribute project videos equally among members

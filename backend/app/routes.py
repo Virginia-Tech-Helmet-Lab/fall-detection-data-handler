@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, Response, send_file
 from .services.normalization import normalize_video, generate_preview
 from .services.annotation import get_annotations, save_annotation
+from flask_login import current_user
 from .models import Video, db
 from .utils.video_processing import save_file, extract_metadata, ensure_browser_compatible, extract_video_frame
 import os
@@ -115,15 +116,49 @@ if not api_routes_registered:
 
     @api_bp.route('/videos', methods=['GET'])
     def list_videos():
-        # For now, return all videos; later filter out videos that are fully annotated.
-        videos = Video.query.all()
-        video_list = [{
-           "video_id": video.video_id,
-           "filename": video.filename,
-           "resolution": video.resolution,
-           "framerate": video.framerate,
-           "duration": video.duration
-        } for video in videos]
+        # Get filter parameters
+        project_id = request.args.get('project_id', type=int)
+        assigned_to = request.args.get('assigned_to', type=int)
+        unassigned = request.args.get('unassigned', 'false').lower() == 'true'
+        
+        # Start with base query
+        query = Video.query
+        
+        # Filter by project if specified
+        if project_id:
+            query = query.filter_by(project_id=project_id)
+        
+        # Filter by assignment
+        if unassigned:
+            query = query.filter(Video.assigned_to.is_(None))
+        elif assigned_to:
+            query = query.filter_by(assigned_to=assigned_to)
+        
+        videos = query.all()
+        
+        # Include assignee information if available
+        from .models import User
+        video_list = []
+        for video in videos:
+            video_data = {
+                "video_id": video.video_id,
+                "filename": video.filename,
+                "resolution": video.resolution,
+                "framerate": video.framerate,
+                "duration": video.duration,
+                "status": video.status,
+                "project_id": video.project_id,
+                "assigned_to": video.assigned_to
+            }
+            
+            # Add assignee name if video is assigned
+            if video.assigned_to:
+                assignee = User.query.get(video.assigned_to)
+                if assignee:
+                    video_data["assigned_to_name"] = assignee.full_name
+            
+            video_list.append(video_data)
+        
         return jsonify(video_list)
 
     @api_bp.route('/export', methods=['GET'])
@@ -515,7 +550,9 @@ if not api_routes_registered:
                 if field not in data:
                     return jsonify({'error': f'Missing required field: {field}'}), 400
             
-            result = save_annotation(data)
+            # Pass current user ID if authenticated
+            user_id = current_user.user_id if current_user.is_authenticated else None
+            result = save_annotation(data, user_id=user_id)
             return jsonify(result)
         except Exception as e:
             import traceback
@@ -545,7 +582,9 @@ if not api_routes_registered:
                     return jsonify({'error': f'Missing required field: {field}'}), 400
             
             from .services.bounding_box import save_bbox_annotation
-            result = save_bbox_annotation(data)
+            # Pass current user ID if authenticated
+            user_id = current_user.user_id if current_user.is_authenticated else None
+            result = save_bbox_annotation(data, user_id=user_id)
             return jsonify(result)
         except Exception as e:
             import traceback
@@ -642,6 +681,73 @@ if not api_routes_registered:
             return jsonify({'status': 'deleted'})
         except Exception as e:
             logger.error(f"Error deleting annotation: {str(e)}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/user-progress/<int:project_id>', methods=['GET'])
+    def get_user_progress(project_id):
+        """Get annotation progress for the current user in a project"""
+        try:
+            if not current_user.is_authenticated:
+                return jsonify({'error': 'Authentication required'}), 401
+            
+            # Get videos assigned to the user in this project
+            videos = Video.query.filter_by(
+                project_id=project_id,
+                assigned_to=current_user.user_id
+            ).all()
+            
+            progress_data = {
+                'total_assigned': len(videos),
+                'completed': 0,
+                'in_progress': 0,
+                'not_started': 0,
+                'videos': []
+            }
+            
+            for video in videos:
+                # Check if video has any annotations from this user
+                temporal_count = TemporalAnnotation.query.filter_by(
+                    video_id=video.video_id,
+                    created_by=current_user.user_id
+                ).count()
+                
+                bbox_count = BoundingBoxAnnotation.query.filter_by(
+                    video_id=video.video_id,
+                    created_by=current_user.user_id
+                ).count()
+                
+                # Determine status
+                if temporal_count > 0 or bbox_count > 0:
+                    if video.is_completed:
+                        status = 'completed'
+                        progress_data['completed'] += 1
+                    else:
+                        status = 'in_progress'
+                        progress_data['in_progress'] += 1
+                else:
+                    status = 'not_started'
+                    progress_data['not_started'] += 1
+                
+                progress_data['videos'].append({
+                    'video_id': video.video_id,
+                    'filename': video.filename,
+                    'status': status,
+                    'temporal_annotations': temporal_count,
+                    'bbox_annotations': bbox_count
+                })
+            
+            # Calculate percentage
+            if progress_data['total_assigned'] > 0:
+                progress_data['completion_percentage'] = round(
+                    (progress_data['completed'] / progress_data['total_assigned']) * 100, 1
+                )
+            else:
+                progress_data['completion_percentage'] = 0
+            
+            return jsonify(progress_data)
+            
+        except Exception as e:
+            logger.error(f"Error getting user progress: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     @api_bp.route('/import/google-drive', methods=['POST'])

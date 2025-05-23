@@ -1,14 +1,21 @@
-import React from 'react';
-import { FaUsers, FaVideo, FaClock, FaChartLine, FaEdit, FaCog } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaUsers, FaVideo, FaClock, FaChartLine, FaEdit, FaCog, FaTasks } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import VideoAssignment from './VideoAssignment';
 import './ProjectCard.css';
 
 const ProjectCard = ({ project, onClick, userRole }) => {
     const navigate = useNavigate();
+    const [showAssignment, setShowAssignment] = useState(false);
 
     const handleSettingsClick = (e) => {
         e.stopPropagation();
         navigate(`/projects/${project.project_id}/settings`);
+    };
+
+    const handleAssignClick = (e) => {
+        e.stopPropagation();
+        setShowAssignment(true);
     };
 
     const getStatusClass = (status) => {
@@ -35,15 +42,26 @@ const ProjectCard = ({ project, onClick, userRole }) => {
         <div className="project-card" onClick={onClick}>
             <div className="project-card-header">
                 <h3>{project.name}</h3>
-                {(userRole === 'admin' || project.user_role === 'lead') && (
-                    <button 
-                        className="project-settings-btn"
-                        onClick={handleSettingsClick}
-                        title="Project Settings"
-                    >
-                        <FaCog />
-                    </button>
-                )}
+                <div className="project-actions">
+                    {userRole === 'admin' && project.status === 'active' && (
+                        <button 
+                            className="project-assign-btn"
+                            onClick={handleAssignClick}
+                            title="Assign Videos"
+                        >
+                            <FaTasks />
+                        </button>
+                    )}
+                    {(userRole === 'admin' || project.user_role === 'lead') && (
+                        <button 
+                            className="project-settings-btn"
+                            onClick={handleSettingsClick}
+                            title="Project Settings"
+                        >
+                            <FaCog />
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className={getStatusClass(project.status)}>
@@ -96,6 +114,14 @@ const ProjectCard = ({ project, onClick, userRole }) => {
                     Last activity: {project.last_activity ? new Date(project.last_activity).toLocaleDateString() : 'Never'}
                 </div>
             </div>
+
+            {showAssignment && (
+                <VideoAssignment
+                    projectId={project.project_id}
+                    projectName={project.name}
+                    onClose={() => setShowAssignment(false)}
+                />
+            )}
         </div>
     );
 };

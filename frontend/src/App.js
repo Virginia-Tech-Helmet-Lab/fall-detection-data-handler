@@ -18,6 +18,7 @@ import DockingBar from './components/DockingBar';
 // Import page components
 import Home from './components/Home/Home';
 import ProjectDashboard from './components/Projects/ProjectDashboard';
+import ProjectCreation from './components/Projects/ProjectCreation';
 import DataImport from './components/DataImport/DataImport';
 import NormalizationPanel from './components/Normalization/NormalizationPanel';
 import LabelingInterface from './components/LabelingInterface/LabelingInterface';
@@ -41,6 +42,11 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/projects" element={<ProjectDashboard />} />
+                  <Route path="/projects/new" element={
+                    <ProtectedRoute requiredRole="admin">
+                      <ProjectCreation />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/import" element={<DataImport />} />
                   <Route path="/normalize" element={<NormalizationPanel />} />
                   <Route path="/labeling" element={<LabelingInterface />} />

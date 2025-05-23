@@ -294,8 +294,8 @@ def distribute_project_videos(project_id):
         data = request.get_json()
         
         # Validate input
-        if not data.get('member_ids') or not isinstance(data['member_ids'], list):
-            return jsonify({'error': 'member_ids array is required'}), 400
+        if not data.get('user_ids') or not isinstance(data['user_ids'], list):
+            return jsonify({'error': 'user_ids array is required'}), 400
         
         # Get project
         from ..models import Project
@@ -309,11 +309,23 @@ def distribute_project_videos(project_id):
         if user.role != UserRole.ADMIN and user_role != ProjectMemberRole.LEAD:
             return jsonify({'error': 'Only project leads or admins can distribute videos'}), 403
         
+        # Get video_ids if provided, otherwise distribute all unassigned
+        video_ids = data.get('video_ids', [])
+        
         # Distribute videos
-        assignments, error = ProjectService.distribute_videos_equally(
-            project_id=project_id,
-            member_ids=data['member_ids']
-        )
+        if video_ids:
+            # Distribute specific videos
+            assignments, error = ProjectService.distribute_specific_videos(
+                project_id=project_id,
+                video_ids=video_ids,
+                member_ids=data['user_ids']
+            )
+        else:
+            # Distribute all unassigned videos
+            assignments, error = ProjectService.distribute_videos_equally(
+                project_id=project_id,
+                member_ids=data['user_ids']
+            )
         
         if error:
             return jsonify({'error': error}), 400
