@@ -8,6 +8,7 @@ import './components/vt-utilities.css';
 
 // Import authentication components
 import { AuthProvider } from './contexts/AuthContext';
+import { ProjectProvider } from './contexts/ProjectContext';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import Login from './components/Auth/Login';
 
@@ -16,6 +17,7 @@ import DockingBar from './components/DockingBar';
 
 // Import page components
 import Home from './components/Home/Home';
+import ProjectDashboard from './components/Projects/ProjectDashboard';
 import DataImport from './components/DataImport/DataImport';
 import NormalizationPanel from './components/Normalization/NormalizationPanel';
 import LabelingInterface from './components/LabelingInterface/LabelingInterface';
@@ -25,9 +27,10 @@ import DataExport from './components/DataExport/DataExport';
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public route */}
+      <ProjectProvider>
+        <Router>
+          <Routes>
+            {/* Public route */}
           <Route path="/login" element={<Login />} />
           
           {/* Protected routes */}
@@ -37,6 +40,7 @@ function App() {
               <div className="main-content">
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/projects" element={<ProjectDashboard />} />
                   <Route path="/import" element={<DataImport />} />
                   <Route path="/normalize" element={<NormalizationPanel />} />
                   <Route path="/labeling" element={<LabelingInterface />} />
@@ -52,6 +56,7 @@ function App() {
           } />
         </Routes>
       </Router>
+      </ProjectProvider>
     </AuthProvider>
   );
 }

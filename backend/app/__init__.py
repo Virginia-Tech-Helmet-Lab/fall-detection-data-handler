@@ -65,10 +65,12 @@ def create_app(config=None):
     # This loads all the route handlers onto the blueprints
     from . import routes
     from .auth import auth_bp
+    from .routes.projects import projects_bp
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(auth_bp)  # auth_bp already has /api/auth prefix
+    app.register_blueprint(projects_bp)  # projects_bp already has /api/projects prefix
     
     with app.app_context():
         # Create database tables
@@ -141,6 +143,48 @@ def create_app(config=None):
             
             db.session.commit()
             print(">>> Test users created successfully!")
+            
+            # Create a demo project
+            from .models import Project, ProjectMember, ProjectStatus, ProjectMemberRole
+            demo_project = Project.query.filter_by(name='Demo Fall Detection Project').first()
+            
+            if not demo_project:
+                print(">>> Creating demo project...")
+                demo_project = Project(
+                    name='Demo Fall Detection Project',
+                    description='A demonstration project for testing the fall detection annotation system',
+                    created_by=admin_user.user_id,
+                    status=ProjectStatus.ACTIVE,
+                    annotation_schema={
+                        'temporal_labels': ['fall', 'near-fall', 'normal'],
+                        'body_parts': ['head', 'shoulder', 'hip', 'knee', 'ankle']
+                    },
+                    normalization_settings={
+                        'target_resolution': '720p',
+                        'target_fps': 30,
+                        'brightness': 1.0,
+                        'contrast': 1.0
+                    }
+                )
+                db.session.add(demo_project)
+                db.session.flush()
+                
+                # Add all test users to the demo project
+                for user_data in test_users:
+                    user = User.query.filter_by(username=user_data['username']).first()
+                    if user:
+                        membership = ProjectMember(
+                            project_id=demo_project.project_id,
+                            user_id=user.user_id,
+                            role=ProjectMemberRole.MEMBER
+                        )
+                        db.session.add(membership)
+                        print(f">>> Added {user.username} to demo project")
+                
+                db.session.commit()
+                print(">>> Demo project created successfully!")
+            else:
+                print(">>> Demo project already exists")
                 
         except Exception as e:
             print(f">>> Error creating admin user: {str(e)}")

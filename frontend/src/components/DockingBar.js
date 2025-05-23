@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaCheck, FaUser, FaSignOutAlt, FaUserCog } from 'react-icons/fa';
+import { FaHome, FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaCheck, FaUser, FaSignOutAlt, FaUserCog, FaFolder } from 'react-icons/fa';
 import './DockingBar.css';
 import vtLogo from '../assets/vt-logo.jpeg'; // Correct the path
 import axios from 'axios';
@@ -18,6 +18,7 @@ const DockingBar = () => {
   // Filter tabs based on user role
   const getAllTabs = () => [
     { name: 'Home', path: '/', icon: <FaHome />, stage: 'home', roles: ['admin', 'annotator', 'reviewer'] },
+    { name: 'Projects', path: '/projects', icon: <FaFolder />, stage: 'projects', roles: ['admin', 'annotator', 'reviewer'] },
     { name: '1. Import Data', path: '/import', icon: <FaUpload />, stage: 'import', roles: ['admin'] },
     { name: '2. Normalize', path: '/normalize', icon: <FaCog />, stage: 'normalize', roles: ['admin', 'annotator'] },
     { name: '3. Label', path: '/labeling', icon: <FaTags />, stage: 'label', roles: ['admin', 'annotator'] },

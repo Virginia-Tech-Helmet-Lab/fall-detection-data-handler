@@ -10,6 +10,18 @@ class UserRole(enum.Enum):
     ANNOTATOR = 'annotator'
     REVIEWER = 'reviewer'
 
+class ProjectStatus(enum.Enum):
+    """Project lifecycle status"""
+    SETUP = 'setup'
+    ACTIVE = 'active'
+    COMPLETED = 'completed'
+    ARCHIVED = 'archived'
+
+class ProjectMemberRole(enum.Enum):
+    """Roles within a project"""
+    LEAD = 'lead'
+    MEMBER = 'member'
+
 class User(UserMixin, db.Model):
     """User model for authentication and role management"""
     __tablename__ = 'users'
@@ -57,6 +69,117 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f'<User {self.username} ({self.role.value if isinstance(self.role, UserRole) else self.role})>'
 
+class Project(db.Model):
+    """Project model for organizing datasets and annotation efforts"""
+    __tablename__ = 'projects'
+    
+    project_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    deadline = db.Column(db.Date)
+    status = db.Column(db.Enum(ProjectStatus), default=ProjectStatus.SETUP, nullable=False)
+    annotation_schema = db.Column(db.JSON)  # Stores what should be annotated
+    normalization_settings = db.Column(db.JSON)  # Default video processing settings
+    quality_threshold = db.Column(db.Float, default=0.8)
+    total_videos = db.Column(db.Integer, default=0)
+    completed_videos = db.Column(db.Integer, default=0)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    creator = db.relationship('User', backref='created_projects', foreign_keys=[created_by])
+    members = db.relationship('ProjectMember', back_populates='project', cascade='all, delete-orphan')
+    videos = db.relationship('Video', back_populates='project')
+    
+    def get_progress_percentage(self):
+        """Calculate project completion percentage"""
+        if self.total_videos == 0:
+            return 0
+        return round((self.completed_videos / self.total_videos) * 100, 1)
+    
+    def is_user_member(self, user_id):
+        """Check if a user is a member of this project"""
+        return any(member.user_id == user_id for member in self.members)
+    
+    def get_user_role(self, user_id):
+        """Get a user's role within the project"""
+        member = next((m for m in self.members if m.user_id == user_id), None)
+        return member.role if member else None
+    
+    def to_dict(self, include_stats=True):
+        """Convert project to dictionary"""
+        data = {
+            'project_id': self.project_id,
+            'name': self.name,
+            'description': self.description,
+            'created_by': self.created_by,
+            'creator_name': self.creator.full_name if self.creator else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'deadline': self.deadline.isoformat() if self.deadline else None,
+            'status': self.status.value if isinstance(self.status, ProjectStatus) else self.status,
+            'quality_threshold': self.quality_threshold,
+            'last_activity': self.last_activity.isoformat() if self.last_activity else None
+        }
+        
+        if include_stats:
+            data.update({
+                'total_videos': self.total_videos,
+                'completed_videos': self.completed_videos,
+                'progress_percentage': self.get_progress_percentage(),
+                'member_count': len(self.members)
+            })
+        
+        return data
+    
+    def __repr__(self):
+        return f'<Project {self.name} ({self.status.value})>'
+
+class ProjectMember(db.Model):
+    """Association between users and projects with roles"""
+    __tablename__ = 'project_members'
+    
+    membership_id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    role = db.Column(db.Enum(ProjectMemberRole), default=ProjectMemberRole.MEMBER, nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_active = db.Column(db.DateTime, default=datetime.utcnow)
+    videos_assigned = db.Column(db.Integer, default=0)
+    videos_completed = db.Column(db.Integer, default=0)
+    
+    # Relationships
+    project = db.relationship('Project', back_populates='members')
+    user = db.relationship('User', backref='project_memberships')
+    
+    # Unique constraint to prevent duplicate memberships
+    __table_args__ = (db.UniqueConstraint('project_id', 'user_id'),)
+    
+    def get_completion_rate(self):
+        """Calculate member's completion rate"""
+        if self.videos_assigned == 0:
+            return 0
+        return round((self.videos_completed / self.videos_assigned) * 100, 1)
+    
+    def to_dict(self):
+        """Convert membership to dictionary"""
+        return {
+            'membership_id': self.membership_id,
+            'project_id': self.project_id,
+            'user_id': self.user_id,
+            'username': self.user.username if self.user else None,
+            'full_name': self.user.full_name if self.user else None,
+            'role': self.role.value if isinstance(self.role, ProjectMemberRole) else self.role,
+            'joined_at': self.joined_at.isoformat() if self.joined_at else None,
+            'last_active': self.last_active.isoformat() if self.last_active else None,
+            'videos_assigned': self.videos_assigned,
+            'videos_completed': self.videos_completed,
+            'completion_rate': self.get_completion_rate()
+        }
+    
+    def __repr__(self):
+        return f'<ProjectMember {self.user.username if self.user else "Unknown"} in {self.project.name if self.project else "Unknown"} ({self.role.value})>'
+
 class Video(db.Model):
     __tablename__ = 'videos'
     video_id = db.Column(db.Integer, primary_key=True)
@@ -67,6 +190,14 @@ class Video(db.Model):
     import_date = db.Column(db.DateTime, default=datetime.utcnow)
     normalization_settings = db.Column(db.JSON)
     status = db.Column(db.String(20), nullable=True, default='pending')
+    
+    # Project association
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'))
+    project = db.relationship('Project', back_populates='videos')
+    
+    # Assignment tracking
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    assignee = db.relationship('User', backref='assigned_videos')
 
 class TemporalAnnotation(db.Model):
     __tablename__ = 'temporal_annotations'
@@ -77,6 +208,11 @@ class TemporalAnnotation(db.Model):
     start_frame = db.Column(db.Integer, nullable=False)
     end_frame = db.Column(db.Integer, nullable=False)
     label = db.Column(db.String(50), nullable=False)
+    
+    # Track who created this annotation
+    created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    annotator = db.relationship('User', backref='temporal_annotations')
 
 class BoundingBoxAnnotation(db.Model):
     __tablename__ = 'bbox_annotations'
@@ -88,3 +224,8 @@ class BoundingBoxAnnotation(db.Model):
     width = db.Column(db.Float)
     height = db.Column(db.Float)
     part_label = db.Column(db.String(50))
+    
+    # Track who created this annotation
+    created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    annotator = db.relationship('User', backref='bbox_annotations')
