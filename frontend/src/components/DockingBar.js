@@ -19,9 +19,9 @@ const DockingBar = () => {
   const getAllTabs = () => [
     { name: 'Home', path: '/', icon: <FaHome />, stage: 'home', roles: ['admin', 'annotator', 'reviewer'] },
     { name: 'Projects', path: '/projects', icon: <FaFolder />, stage: 'projects', roles: ['admin', 'annotator', 'reviewer'] },
-    { name: '1. Import Data', path: '/import', icon: <FaUpload />, stage: 'import', roles: ['admin'] },
-    { name: '2. Normalize', path: '/normalize', icon: <FaCog />, stage: 'normalize', roles: ['admin', 'annotator'] },
-    { name: '3. Label', path: '/labeling', icon: <FaTags />, stage: 'label', roles: ['admin', 'annotator'] },
+    { name: '1. Import Data', path: '/import', icon: <FaUpload />, stage: 'import', roles: ['admin', 'reviewer'] },
+    { name: '2. Normalize', path: '/normalize', icon: <FaCog />, stage: 'normalize', roles: ['admin', 'annotator', 'reviewer'] },
+    { name: '3. Label', path: '/labeling', icon: <FaTags />, stage: 'label', roles: ['admin', 'annotator', 'reviewer'] },
     { name: '4. Review', path: '/review', icon: <FaCheckCircle />, stage: 'review', roles: ['admin', 'reviewer'] },
     { name: '5. Export', path: '/export', icon: <FaDownload />, stage: 'export', roles: ['admin', 'reviewer'] },
     { name: 'Analytics', path: '/analytics', icon: <FaChartBar />, stage: 'analytics', roles: ['admin', 'annotator', 'reviewer'] },
@@ -86,14 +86,16 @@ const DockingBar = () => {
       className += ' completed';
     }
     
-    // Check if user is admin - admins can access everything
+    // Check if user is admin or reviewer - they can access everything
     const isAdminUser = user?.role === 'ADMIN' || user?.role === 'admin';
-    if (isAdminUser) {
-      // Admin users never get disabled tabs
+    const isReviewerUser = user?.role === 'REVIEWER' || user?.role === 'reviewer';
+    
+    if (isAdminUser || isReviewerUser) {
+      // Admin and Reviewer users never get disabled tabs
       return className;
     }
     
-    // For non-admin users, check accessibility
+    // For annotator users, check accessibility based on workflow progression
     const stageOrder = ['import', 'normalize', 'label', 'review', 'export'];
     const tabIndex = stageOrder.indexOf(tab.stage);
     
@@ -106,11 +108,9 @@ const DockingBar = () => {
     }
     
     const isAlwaysAccessible = ['home', 'projects', 'users', 'analytics'].includes(tab.stage);
-    const isReviewerAccess = (user?.role === 'REVIEWER' || user?.role === 'reviewer') && 
-                            ['review', 'export'].includes(tab.stage);
     const isWorkflowAccess = stageCompletion[tab.stage] || tabIndex <= lastCompletedIndex + 1;
     
-    const isAccessible = isAlwaysAccessible || isReviewerAccess || isWorkflowAccess;
+    const isAccessible = isAlwaysAccessible || isWorkflowAccess;
     
     if (!isAccessible) {
       className += ' disabled';
