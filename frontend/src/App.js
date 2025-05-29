@@ -25,6 +25,7 @@ import NormalizationPanel from './components/Normalization/NormalizationPanel';
 import LabelingInterface from './components/LabelingInterface/LabelingInterface';
 import ReviewDashboard from './components/ReviewDashboard/ReviewDashboard';
 import DataExport from './components/DataExport/DataExport';
+import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
 
 function App() {
   return (
@@ -56,12 +57,9 @@ function App() {
                   <Route path="/import" element={<DataImport />} />
                   <Route path="/normalize" element={<NormalizationPanel />} />
                   <Route path="/labeling" element={<LabelingInterface />} />
-                  <Route path="/review" element={
-                    <ProtectedRoute requiredRole="reviewer">
-                      <ReviewDashboard />
-                    </ProtectedRoute>
-                  } />
+                  <Route path="/review" element={<ReviewDashboard />} />
                   <Route path="/export" element={<DataExport />} />
+                  <Route path="/analytics" element={<AnalyticsDashboard />} />
                 </Routes>
               </div>
             </ProtectedRoute>

@@ -33,9 +33,10 @@ const ReviewDashboard = () => {
         myReviewsOnly: false
     });
 
-    // Check user role
-    const isReviewer = user?.role === 'reviewer' || user?.role === 'admin';
-    const isAnnotator = user?.role === 'annotator';
+    // Check user role (handle both uppercase and lowercase)
+    const userRole = user?.role?.toUpperCase();
+    const isReviewer = userRole === 'REVIEWER' || userRole === 'ADMIN';
+    const isAnnotator = userRole === 'ANNOTATOR';
 
     useEffect(() => {
         fetchReviewQueue();

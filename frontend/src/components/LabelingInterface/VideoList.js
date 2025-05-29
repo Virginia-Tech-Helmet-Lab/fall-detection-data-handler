@@ -19,7 +19,11 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
                 if (userId && filter === 'assigned') params.append('assigned_to', userId);
                 if (filter === 'unassigned') params.append('unassigned', 'true');
                 
-                const response = await axios.get(`http://localhost:5000/api/videos?${params}`);
+                const response = await axios.get(`http://localhost:5000/api/videos?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
                 setVideos(response.data);
                 setError(null);
             } catch (error) {
@@ -44,7 +48,7 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
             </div>
             
             {/* Filter tabs for admin/reviewer */}
-            {userRole && (userRole === 'admin' || userRole === 'reviewer') && (
+            {userRole && (userRole.toUpperCase() === 'ADMIN' || userRole.toUpperCase() === 'REVIEWER') && (
                 <div className="filter-tabs">
                     <button 
                         className={`filter-tab ${filter === 'assigned' ? 'active' : ''}`}

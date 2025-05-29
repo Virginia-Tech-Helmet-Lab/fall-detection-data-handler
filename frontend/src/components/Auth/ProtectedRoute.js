@@ -22,7 +22,10 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     }
 
     // Check role requirements
-    if (requiredRole && !hasRole(requiredRole)) {
+    // Admin users have access to everything
+    const isAdmin = hasRole('admin') || hasRole('ADMIN');
+    
+    if (requiredRole && !hasRole(requiredRole) && !isAdmin) {
         return (
             <div className="access-denied">
                 <h2>Access Denied</h2>

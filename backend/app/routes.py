@@ -116,7 +116,13 @@ if not api_routes_registered:
     # Existing endpoints remain...
 
     @api_bp.route('/videos', methods=['GET'])
+    @jwt_required()
     def list_videos():
+        # Get current user
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(int(current_user_id))
+        user_role = current_user.role.value if hasattr(current_user.role, 'value') else current_user.role
+        
         # Get filter parameters
         project_id = request.args.get('project_id', type=int)
         assigned_to = request.args.get('assigned_to', type=int)
@@ -134,6 +140,10 @@ if not api_routes_registered:
             query = query.filter(Video.assigned_to.is_(None))
         elif assigned_to:
             query = query.filter_by(assigned_to=assigned_to)
+        else:
+            # If no specific filter and not admin/reviewer, only show user's videos
+            if user_role not in ['ADMIN', 'REVIEWER']:
+                query = query.filter_by(assigned_to=int(current_user_id))
         
         videos = query.all()
         
@@ -943,6 +953,7 @@ if not api_routes_registered:
             return jsonify({'error': str(e)}), 500
 
     @api_bp.route('/export/stats', methods=['GET', 'OPTIONS'])
+    @jwt_required()
     def get_export_stats():
         """Get statistics about data available for export"""
         # Handle CORS preflight

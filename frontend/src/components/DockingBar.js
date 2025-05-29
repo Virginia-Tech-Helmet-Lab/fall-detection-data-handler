@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FaHome, FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaCheck, FaUser, FaSignOutAlt, FaUserCog, FaFolder } from 'react-icons/fa';
+import { FaHome, FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaCheck, FaUser, FaSignOutAlt, FaUserCog, FaFolder, FaChartBar } from 'react-icons/fa';
 import './DockingBar.css';
 import vtLogo from '../assets/vt-logo.jpeg'; // Correct the path
 import axios from 'axios';
@@ -24,11 +24,12 @@ const DockingBar = () => {
     { name: '3. Label', path: '/labeling', icon: <FaTags />, stage: 'label', roles: ['admin', 'annotator'] },
     { name: '4. Review', path: '/review', icon: <FaCheckCircle />, stage: 'review', roles: ['admin', 'reviewer'] },
     { name: '5. Export', path: '/export', icon: <FaDownload />, stage: 'export', roles: ['admin', 'reviewer'] },
+    { name: 'Analytics', path: '/analytics', icon: <FaChartBar />, stage: 'analytics', roles: ['admin', 'annotator', 'reviewer'] },
     { name: 'Users', path: '/users', icon: <FaUserCog />, stage: 'users', roles: ['admin'] }
   ];
 
   const tabs = getAllTabs().filter(tab => 
-    tab.roles.includes(user?.role)
+    tab.roles.includes(user?.role?.toLowerCase())
   );
   
   useEffect(() => {
@@ -37,7 +38,11 @@ const DockingBar = () => {
   
   const checkStageCompletion = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/export/stats');
+      const response = await axios.get('http://localhost:5000/api/export/stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
       const stats = response.data;
       
       const completion = {
@@ -67,7 +72,14 @@ const DockingBar = () => {
       className += ' completed';
     }
     
-    // Check if this tab should be accessible
+    // Check if user is admin - admins can access everything
+    const isAdminUser = user?.role === 'ADMIN' || user?.role === 'admin';
+    if (isAdminUser) {
+      // Admin users never get disabled tabs
+      return className;
+    }
+    
+    // For non-admin users, check accessibility
     const stageOrder = ['import', 'normalize', 'label', 'review', 'export'];
     const tabIndex = stageOrder.indexOf(tab.stage);
     
@@ -79,18 +91,12 @@ const DockingBar = () => {
       }
     }
     
-    // Tab is accessible if:
-    // - It's home, projects, or users (always accessible)
-    // - User is admin (can access everything)
-    // - User is reviewer and it's review/export tab
-    // - It's completed or the next stage in workflow
-    const isAlwaysAccessible = ['home', 'projects', 'users'].includes(tab.stage);
-    const isReviewerAccess = user?.role === 'REVIEWER' && 
+    const isAlwaysAccessible = ['home', 'projects', 'users', 'analytics'].includes(tab.stage);
+    const isReviewerAccess = (user?.role === 'REVIEWER' || user?.role === 'reviewer') && 
                             ['review', 'export'].includes(tab.stage);
-    const isAdminAccess = user?.role === 'ADMIN';
     const isWorkflowAccess = stageCompletion[tab.stage] || tabIndex <= lastCompletedIndex + 1;
     
-    const isAccessible = isAlwaysAccessible || isAdminAccess || isReviewerAccess || isWorkflowAccess;
+    const isAccessible = isAlwaysAccessible || isReviewerAccess || isWorkflowAccess;
     
     if (!isAccessible) {
       className += ' disabled';
@@ -165,7 +171,8 @@ const DockingBar = () => {
       <div className="navigation-tabs">
         {tabs.map((tab, index) => {
           const tabClass = getTabClassName(tab);
-          const isDisabled = tabClass.includes('disabled');
+          const isAdminUser = user?.role === 'ADMIN' || user?.role === 'admin';
+          const isDisabled = tabClass.includes('disabled') && !isAdminUser;
           
           return isDisabled ? (
             <div 
