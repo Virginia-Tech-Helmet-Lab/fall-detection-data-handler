@@ -19,6 +19,7 @@ import DockingBar from './components/DockingBar';
 import Home from './components/Home/Home';
 import ProjectDashboard from './components/Projects/ProjectDashboard';
 import ProjectCreation from './components/Projects/ProjectCreation';
+import ProjectSettings from './components/Projects/ProjectSettings';
 import UserManagement from './components/Admin/UserManagement';
 import DataImport from './components/DataImport/DataImport';
 import NormalizationPanel from './components/Normalization/NormalizationPanel';
@@ -47,6 +48,11 @@ function App() {
                   <Route path="/projects/new" element={
                     <ProtectedRoute requiredRole="admin">
                       <ProjectCreation />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/projects/:projectId/settings" element={
+                    <ProtectedRoute requiredRole="admin">
+                      <ProjectSettings />
                     </ProtectedRoute>
                   } />
                   <Route path="/users" element={

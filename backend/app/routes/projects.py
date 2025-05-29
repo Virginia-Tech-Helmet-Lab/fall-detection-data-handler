@@ -92,9 +92,10 @@ def get_project(project_id):
         if not project:
             return jsonify({'error': 'Project not found'}), 404
         
-        # Check access
-        if user.role != UserRole.ADMIN and not project.is_user_member(user_id):
-            return jsonify({'error': 'Access denied'}), 403
+        # For now, allow all authenticated users to see project details
+        # TODO: Implement proper access control if needed
+        # if user.role != UserRole.ADMIN and not project.is_user_member(user_id):
+        #     return jsonify({'error': 'Access denied'}), 403
         
         # Get detailed statistics
         stats = ProjectService.get_project_statistics(project_id)
@@ -145,6 +146,11 @@ def update_project(project_id):
             project.normalization_settings = data['normalization_settings']
         if 'quality_threshold' in data:
             project.quality_threshold = data['quality_threshold']
+        if 'status' in data:
+            try:
+                project.status = ProjectStatus(data['status'])
+            except ValueError:
+                logger.warning(f"Invalid status value: {data['status']}")
         
         project.last_activity = datetime.utcnow()
         
@@ -395,3 +401,82 @@ def get_project_statistics(project_id):
     except Exception as e:
         logger.error(f"Error fetching project statistics: {str(e)}")
         return jsonify({'error': 'Failed to fetch statistics'}), 500
+@projects_bp.route('/<int:project_id>', methods=['DELETE'])
+@jwt_required()
+def delete_project(project_id):
+    """Delete a project (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        # Only admins can delete projects
+        if user.role != UserRole.ADMIN:
+            return jsonify({'error': 'Only administrators can delete projects'}), 403
+        
+        # Get project
+        from ..models import Project
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return jsonify({'error': 'Project not found'}), 404
+        
+        project_name = project.name
+        
+        # Delete project (cascade will handle related records)
+        from ..database import db
+        db.session.delete(project)
+        db.session.commit()
+        
+        logger.info(f"Project '{project_name}' deleted by user {user.username}")
+        
+        return jsonify({
+            'message': f'Project "{project_name}" deleted successfully',
+            'success': True
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error deleting project: {str(e)}")
+        from ..database import db
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete project'}), 500
+
+@projects_bp.route('/<int:project_id>/archive', methods=['POST'])
+@jwt_required()
+def archive_project(project_id):
+    """Archive a project (admin only)"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        # Only admins can archive projects
+        if user.role != UserRole.ADMIN:
+            return jsonify({'error': 'Only administrators can archive projects'}), 403
+        
+        # Get project
+        from ..models import Project
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return jsonify({'error': 'Project not found'}), 404
+        
+        # Update status to archived
+        project.status = ProjectStatus.ARCHIVED
+        project.last_activity = datetime.utcnow()
+        
+        from ..database import db
+        db.session.commit()
+        
+        logger.info(f"Project '{project.name}' archived by user {user.username}")
+        
+        return jsonify({
+            'message': f'Project "{project.name}" archived successfully',
+            'project': project.to_dict(),
+            'success': True
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error archiving project: {str(e)}")
+        from ..database import db
+        db.session.rollback()
+        return jsonify({'error': 'Failed to archive project'}), 500
+

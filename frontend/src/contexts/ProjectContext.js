@@ -30,8 +30,9 @@ export const ProjectProvider = ({ children }) => {
     // Add auth token to requests
     projectApi.interceptors.request.use(
         (config) => {
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
+            const currentToken = localStorage.getItem('access_token');
+            if (currentToken) {
+                config.headers.Authorization = `Bearer ${currentToken}`;
             }
             return config;
         },
