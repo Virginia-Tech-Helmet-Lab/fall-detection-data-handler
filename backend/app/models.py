@@ -245,3 +245,95 @@ class BoundingBoxAnnotation(db.Model):
     # created_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
     # created_at = db.Column(db.DateTime, default=datetime.utcnow)
     # annotator = db.relationship('User', backref='bbox_annotations')
+
+# Review System Models
+class ReviewStatus(enum.Enum):
+    """Status of a review"""
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    NEEDS_REVISION = "needs_revision"
+
+class ReviewQueue(db.Model):
+    """Queue for videos that need review"""
+    __tablename__ = 'review_queue'
+    
+    review_id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey('videos.video_id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.project_id'), nullable=False)
+    annotator_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    
+    # Status tracking
+    status = db.Column(db.Enum(ReviewStatus), default=ReviewStatus.PENDING, nullable=False)
+    priority = db.Column(db.Integer, default=0)  # Higher number = higher priority
+    
+    # Quality metrics
+    quality_score = db.Column(db.Float)  # 0.0 to 5.0
+    accuracy_score = db.Column(db.Float)  # 0.0 to 1.0
+    completeness_score = db.Column(db.Float)  # 0.0 to 1.0
+    
+    # Review feedback
+    review_comments = db.Column(db.Text)
+    revision_notes = db.Column(db.Text)
+    
+    # Timestamps
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    review_started_at = db.Column(db.DateTime)
+    reviewed_at = db.Column(db.DateTime)
+    
+    # Statistics
+    annotation_count = db.Column(db.Integer, default=0)
+    bbox_count = db.Column(db.Integer, default=0)
+    review_time_seconds = db.Column(db.Integer)  # Time spent reviewing
+    
+    # Relationships
+    video = db.relationship('Video', backref='reviews')
+    project = db.relationship('Project', backref='review_items')
+    annotator = db.relationship('User', foreign_keys=[annotator_id], backref='annotations_for_review')
+    reviewer = db.relationship('User', foreign_keys=[reviewer_id], backref='reviews_assigned')
+    
+    def to_dict(self):
+        """Convert to dictionary"""
+        return {
+            'review_id': self.review_id,
+            'video_id': self.video_id,
+            'project_id': self.project_id,
+            'annotator_id': self.annotator_id,
+            'reviewer_id': self.reviewer_id,
+            'status': self.status.value if self.status else None,
+            'priority': self.priority,
+            'quality_score': self.quality_score,
+            'accuracy_score': self.accuracy_score,
+            'completeness_score': self.completeness_score,
+            'review_comments': self.review_comments,
+            'revision_notes': self.revision_notes,
+            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'review_started_at': self.review_started_at.isoformat() if self.review_started_at else None,
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'annotation_count': self.annotation_count,
+            'bbox_count': self.bbox_count,
+            'review_time_seconds': self.review_time_seconds
+        }
+
+class ReviewFeedback(db.Model):
+    """Detailed feedback on specific annotations"""
+    __tablename__ = 'review_feedback'
+    
+    feedback_id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('review_queue.review_id'), nullable=False)
+    annotation_type = db.Column(db.String(50))  # 'temporal' or 'bbox'
+    annotation_id = db.Column(db.Integer)  # ID of the specific annotation
+    
+    # Feedback details
+    issue_type = db.Column(db.String(50))  # 'missed_event', 'incorrect_timing', 'wrong_label', etc.
+    severity = db.Column(db.String(20))  # 'minor', 'major', 'critical'
+    comment = db.Column(db.Text)
+    suggestion = db.Column(db.Text)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    review = db.relationship('ReviewQueue', backref='feedback_items')

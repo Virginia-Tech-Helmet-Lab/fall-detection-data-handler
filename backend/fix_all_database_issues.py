@@ -94,8 +94,28 @@ def fix_all_database_issues():
             
             db.session.commit()
             
-            # 4. Verify everything works
-            print("\n4. Verifying fixes...")
+            # 4. Create review tables if they don't exist
+            print("\n4. Creating review tables if needed...")
+            
+            # Check if review_queue table exists
+            result = db.session.execute(text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='review_queue'"
+            ))
+            if not result.fetchone():
+                print("   Creating review tables...")
+                # Import models to ensure they're registered
+                from app.models import ReviewQueue, ReviewFeedback
+                
+                # Create all tables (this will only create missing ones)
+                db.create_all()
+                print("   ✓ Review tables created")
+            else:
+                print("   ✓ Review tables already exist")
+            
+            db.session.commit()
+            
+            # 5. Verify everything works
+            print("\n5. Verifying fixes...")
             
             # Check roles
             result = db.session.execute(text("SELECT DISTINCT role FROM users"))

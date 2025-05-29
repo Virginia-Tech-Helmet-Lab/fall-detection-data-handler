@@ -61,11 +61,13 @@ def create_app(config=None):
     from . import routes
     from .auth import auth_bp
     from .routes.projects import projects_bp
+    from .routes.review import review_bp
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(auth_bp)  # auth_bp already has /api/auth prefix
     app.register_blueprint(projects_bp)  # projects_bp already has /api/projects prefix
+    app.register_blueprint(review_bp)  # review_bp already has /api/review prefix
     
     # Add a before_request handler to log all requests
     @app.before_request

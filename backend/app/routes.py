@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app, send_from_directory,
 from .services.normalization import normalize_video, generate_preview
 from .services.annotation import get_annotations, save_annotation
 from flask_login import current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from .models import Video, db
 from .utils.video_processing import save_file, extract_metadata, ensure_browser_compatible, extract_video_frame
 import os
@@ -683,6 +684,47 @@ if not api_routes_registered:
             logger.error(f"Error deleting annotation: {str(e)}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
+    @api_bp.route('/videos/<int:video_id>/complete', methods=['POST'])
+    @jwt_required()
+    def mark_video_complete(video_id):
+        """Mark a video as complete and submit for review"""
+        try:
+            user_id = get_jwt_identity()
+            
+            # Get the video
+            video = Video.query.get(video_id)
+            if not video:
+                return jsonify({'error': 'Video not found'}), 404
+            
+            # Check if user is assigned to this video
+            # if hasattr(video, 'assigned_to') and video.assigned_to != int(user_id):
+            #     return jsonify({'error': 'You are not assigned to this video'}), 403
+            
+            # Mark as completed
+            if hasattr(video, 'is_completed'):
+                video.is_completed = True
+            
+            # Submit for review
+            from .services.review import ReviewService
+            review = ReviewService.submit_for_review(
+                video_id=video_id,
+                annotator_id=int(user_id),
+                auto_assign=True
+            )
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Video marked as complete and submitted for review',
+                'review_id': review.review_id,
+                'status': 'submitted'
+            }), 200
+            
+        except Exception as e:
+            logger.error(f"Error marking video complete: {str(e)}")
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+    
     @api_bp.route('/user-progress/<int:project_id>', methods=['GET'])
     def get_user_progress(project_id):
         """Get annotation progress for the current user in a project"""

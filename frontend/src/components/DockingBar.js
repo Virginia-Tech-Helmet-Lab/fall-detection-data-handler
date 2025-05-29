@@ -79,10 +79,18 @@ const DockingBar = () => {
       }
     }
     
-    // Tab is accessible if it's home, completed, or the next stage
-    const isAccessible = tab.stage === 'home' || 
-                        stageCompletion[tab.stage] || 
-                        tabIndex <= lastCompletedIndex + 1;
+    // Tab is accessible if:
+    // - It's home, projects, or users (always accessible)
+    // - User is admin (can access everything)
+    // - User is reviewer and it's review/export tab
+    // - It's completed or the next stage in workflow
+    const isAlwaysAccessible = ['home', 'projects', 'users'].includes(tab.stage);
+    const isReviewerAccess = user?.role === 'REVIEWER' && 
+                            ['review', 'export'].includes(tab.stage);
+    const isAdminAccess = user?.role === 'ADMIN';
+    const isWorkflowAccess = stageCompletion[tab.stage] || tabIndex <= lastCompletedIndex + 1;
+    
+    const isAccessible = isAlwaysAccessible || isAdminAccess || isReviewerAccess || isWorkflowAccess;
     
     if (!isAccessible) {
       className += ' disabled';

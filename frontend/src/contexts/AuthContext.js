@@ -187,10 +187,10 @@ export const AuthProvider = ({ children }) => {
 
     // Helper functions
     const isAuthenticated = () => !!user;
-    const hasRole = (role) => user?.role === role;
-    const isAdmin = () => hasRole('admin');
-    const isAnnotator = () => hasRole('annotator');
-    const isReviewer = () => hasRole('reviewer');
+    const hasRole = (role) => user?.role === role || user?.role === role.toUpperCase();
+    const isAdmin = () => hasRole('admin') || hasRole('ADMIN');
+    const isAnnotator = () => hasRole('annotator') || hasRole('ANNOTATOR');
+    const isReviewer = () => hasRole('reviewer') || hasRole('REVIEWER');
 
     const value = {
         // State
