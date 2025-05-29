@@ -3,11 +3,17 @@ import VideoList from './VideoList';
 import VideoPlayer from './VideoPlayer';
 import BoundingBoxTool from './BoundingBoxTool';
 import AnnotationPanel from './AnnotationPanel';
+import ProgressTracker from './ProgressTracker';
+import VideoQueue from './VideoQueue';
 import './LabelingInterface.css';
 import { useNavigate } from 'react-router-dom';
 import { FaClipboardCheck } from 'react-icons/fa';
+import { useAuth } from '../../contexts/AuthContext';
+import { useProject } from '../../contexts/ProjectContext';
 
 const LabelingInterface = () => {
+    const { user } = useAuth();
+    const { currentProject } = useProject();
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [boundingBoxes, setBoundingBoxes] = useState([]);
     const [temporalAnnotations, setTemporalAnnotations] = useState([]);
@@ -134,10 +140,60 @@ const LabelingInterface = () => {
         }
     };
     
+    // Add keyboard navigation for video queue
+    useEffect(() => {
+        const handleKeydown = (event) => {
+            // Only handle navigation if not typing in an input field
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // Get the VideoQueue component's navigation functions
+            const videoQueueElement = document.querySelector('.video-queue');
+            if (!videoQueueElement || user?.role !== 'annotator') {
+                return;
+            }
+            
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                const prevBtn = videoQueueElement.querySelector('.prev-btn');
+                if (prevBtn && !prevBtn.disabled) {
+                    prevBtn.click();
+                }
+            } else if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                const nextBtn = videoQueueElement.querySelector('.next-btn');
+                if (nextBtn && !nextBtn.disabled) {
+                    nextBtn.click();
+                }
+            }
+        };
+        
+        window.addEventListener('keydown', handleKeydown);
+        return () => window.removeEventListener('keydown', handleKeydown);
+    }, [user?.role]);
+    
     return (
         <div className="labeling-container">
             <div className="video-list-panel">
-                <VideoList onVideoSelect={handleVideoSelect} />
+                {/* Video Queue Navigation for Annotators */}
+                {user && user.role === 'annotator' && (
+                    <VideoQueue 
+                        selectedVideo={selectedVideo}
+                        onVideoSelect={handleVideoSelect}
+                    />
+                )}
+                
+                {/* Progress Tracker for Annotators */}
+                {user && user.role === 'annotator' && (
+                    <ProgressTracker />
+                )}
+                <VideoList 
+                    onVideoSelect={handleVideoSelect} 
+                    userId={user?.user_id}
+                    projectId={currentProject?.project_id}
+                    userRole={user?.role}
+                />
             </div>
             <div className="video-display-panel">
                 {selectedVideo ? (

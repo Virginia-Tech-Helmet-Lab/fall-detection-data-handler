@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import './LocalFileImport.css';
 
-const LocalFileImport = ({ setLoading, setMessage, onSuccess, onError }) => {
+const LocalFileImport = ({ setLoading, setMessage, onSuccess, onError, projectId }) => {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
@@ -27,8 +27,13 @@ const LocalFileImport = ({ setLoading, setMessage, onSuccess, onError }) => {
             formData.append('files', file);
         });
         
+        // Add project_id if available
+        if (projectId) {
+            formData.append('project_id', projectId);
+        }
+        
         try {
-            console.log('Sending upload request to backend...');
+            console.log('Sending upload request to backend...', projectId ? `for project ${projectId}` : 'without project');
             const response = await axios.post('http://localhost:5000/api/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });

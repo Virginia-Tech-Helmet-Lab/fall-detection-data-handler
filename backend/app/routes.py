@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, Response, send_file
 from .services.normalization import normalize_video, generate_preview
 from .services.annotation import get_annotations, save_annotation
+from flask_login import current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from .models import Video, db
 from .utils.video_processing import save_file, extract_metadata, ensure_browser_compatible, extract_video_frame
 import os
@@ -41,6 +43,21 @@ if not api_routes_registered:
         if not files or files[0].filename == '':
             return jsonify({'error': 'No files selected'}), 400
         
+        # Get optional project_id from form data
+        project_id = request.form.get('project_id')
+        if project_id:
+            try:
+                project_id = int(project_id)
+                # Verify project exists
+                from .models import Project
+                project = Project.query.get(project_id)
+                if not project:
+                    return jsonify({'error': f'Project {project_id} not found'}), 404
+            except ValueError:
+                return jsonify({'error': 'Invalid project_id'}), 400
+        else:
+            project_id = None
+        
         upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
         os.makedirs(upload_folder, exist_ok=True)
         
@@ -71,9 +88,15 @@ if not api_routes_registered:
                     filename=web_filename,  # Use web-compatible filename
                     resolution=metadata.get('resolution', 'unknown'),
                     framerate=metadata.get('framerate', 0),
-                    duration=metadata.get('duration', 0)
+                    duration=metadata.get('duration', 0),
+                    project_id=project_id  # Associate with project if provided
                 )
                 db.session.add(video)
+                
+                # Update project statistics if video is assigned to a project
+                if project_id:
+                    project.total_videos = Video.query.filter_by(project_id=project_id).count() + 1
+                    project.last_activity = datetime.utcnow()
                 
                 results.append({
                     'filename': web_filename,
@@ -93,16 +116,60 @@ if not api_routes_registered:
     # Existing endpoints remain...
 
     @api_bp.route('/videos', methods=['GET'])
+    @jwt_required()
     def list_videos():
-        # For now, return all videos; later filter out videos that are fully annotated.
-        videos = Video.query.all()
-        video_list = [{
-           "video_id": video.video_id,
-           "filename": video.filename,
-           "resolution": video.resolution,
-           "framerate": video.framerate,
-           "duration": video.duration
-        } for video in videos]
+        # Get current user
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(int(current_user_id))
+        user_role = current_user.role.value if hasattr(current_user.role, 'value') else current_user.role
+        
+        # Get filter parameters
+        project_id = request.args.get('project_id', type=int)
+        assigned_to = request.args.get('assigned_to', type=int)
+        unassigned = request.args.get('unassigned', 'false').lower() == 'true'
+        
+        # Start with base query
+        query = Video.query
+        
+        # Filter by project if specified
+        if project_id:
+            query = query.filter_by(project_id=project_id)
+        
+        # Filter by assignment
+        if unassigned:
+            query = query.filter(Video.assigned_to.is_(None))
+        elif assigned_to:
+            query = query.filter_by(assigned_to=assigned_to)
+        else:
+            # If no specific filter and not admin/reviewer, only show user's videos
+            if user_role not in ['ADMIN', 'REVIEWER']:
+                query = query.filter_by(assigned_to=int(current_user_id))
+        
+        videos = query.all()
+        
+        # Include assignee information if available
+        from .models import User
+        video_list = []
+        for video in videos:
+            video_data = {
+                "video_id": video.video_id,
+                "filename": video.filename,
+                "resolution": video.resolution,
+                "framerate": video.framerate,
+                "duration": video.duration,
+                "status": video.status,
+                "project_id": video.project_id,
+                "assigned_to": video.assigned_to
+            }
+            
+            # Add assignee name if video is assigned
+            if video.assigned_to:
+                assignee = User.query.get(video.assigned_to)
+                if assignee:
+                    video_data["assigned_to_name"] = assignee.full_name
+            
+            video_list.append(video_data)
+        
         return jsonify(video_list)
 
     @api_bp.route('/export', methods=['GET'])
@@ -494,7 +561,9 @@ if not api_routes_registered:
                 if field not in data:
                     return jsonify({'error': f'Missing required field: {field}'}), 400
             
-            result = save_annotation(data)
+            # Pass current user ID if authenticated
+            user_id = current_user.user_id if current_user.is_authenticated else None
+            result = save_annotation(data, user_id=user_id)
             return jsonify(result)
         except Exception as e:
             import traceback
@@ -524,7 +593,9 @@ if not api_routes_registered:
                     return jsonify({'error': f'Missing required field: {field}'}), 400
             
             from .services.bounding_box import save_bbox_annotation
-            result = save_bbox_annotation(data)
+            # Pass current user ID if authenticated
+            user_id = current_user.user_id if current_user.is_authenticated else None
+            result = save_bbox_annotation(data, user_id=user_id)
             return jsonify(result)
         except Exception as e:
             import traceback
@@ -621,6 +692,114 @@ if not api_routes_registered:
             return jsonify({'status': 'deleted'})
         except Exception as e:
             logger.error(f"Error deleting annotation: {str(e)}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
+
+    @api_bp.route('/videos/<int:video_id>/complete', methods=['POST'])
+    @jwt_required()
+    def mark_video_complete(video_id):
+        """Mark a video as complete and submit for review"""
+        try:
+            user_id = get_jwt_identity()
+            
+            # Get the video
+            video = Video.query.get(video_id)
+            if not video:
+                return jsonify({'error': 'Video not found'}), 404
+            
+            # Check if user is assigned to this video
+            # if hasattr(video, 'assigned_to') and video.assigned_to != int(user_id):
+            #     return jsonify({'error': 'You are not assigned to this video'}), 403
+            
+            # Mark as completed
+            if hasattr(video, 'is_completed'):
+                video.is_completed = True
+            
+            # Submit for review
+            from .services.review import ReviewService
+            review = ReviewService.submit_for_review(
+                video_id=video_id,
+                annotator_id=int(user_id),
+                auto_assign=True
+            )
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Video marked as complete and submitted for review',
+                'review_id': review.review_id,
+                'status': 'submitted'
+            }), 200
+            
+        except Exception as e:
+            logger.error(f"Error marking video complete: {str(e)}")
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+    
+    @api_bp.route('/user-progress/<int:project_id>', methods=['GET'])
+    def get_user_progress(project_id):
+        """Get annotation progress for the current user in a project"""
+        try:
+            if not current_user.is_authenticated:
+                return jsonify({'error': 'Authentication required'}), 401
+            
+            # Get videos assigned to the user in this project
+            videos = Video.query.filter_by(
+                project_id=project_id,
+                assigned_to=current_user.user_id
+            ).all()
+            
+            progress_data = {
+                'total_assigned': len(videos),
+                'completed': 0,
+                'in_progress': 0,
+                'not_started': 0,
+                'videos': []
+            }
+            
+            for video in videos:
+                # Check if video has any annotations from this user
+                temporal_count = TemporalAnnotation.query.filter_by(
+                    video_id=video.video_id,
+                    created_by=current_user.user_id
+                ).count()
+                
+                bbox_count = BoundingBoxAnnotation.query.filter_by(
+                    video_id=video.video_id,
+                    created_by=current_user.user_id
+                ).count()
+                
+                # Determine status
+                if temporal_count > 0 or bbox_count > 0:
+                    if video.is_completed:
+                        status = 'completed'
+                        progress_data['completed'] += 1
+                    else:
+                        status = 'in_progress'
+                        progress_data['in_progress'] += 1
+                else:
+                    status = 'not_started'
+                    progress_data['not_started'] += 1
+                
+                progress_data['videos'].append({
+                    'video_id': video.video_id,
+                    'filename': video.filename,
+                    'status': status,
+                    'temporal_annotations': temporal_count,
+                    'bbox_annotations': bbox_count
+                })
+            
+            # Calculate percentage
+            if progress_data['total_assigned'] > 0:
+                progress_data['completion_percentage'] = round(
+                    (progress_data['completed'] / progress_data['total_assigned']) * 100, 1
+                )
+            else:
+                progress_data['completion_percentage'] = 0
+            
+            return jsonify(progress_data)
+            
+        except Exception as e:
+            logger.error(f"Error getting user progress: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     @api_bp.route('/import/google-drive', methods=['POST'])
@@ -773,9 +952,18 @@ if not api_routes_registered:
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
-    @api_bp.route('/export/stats', methods=['GET'])
+    @api_bp.route('/export/stats', methods=['GET', 'OPTIONS'])
+    @jwt_required()
     def get_export_stats():
         """Get statistics about data available for export"""
+        # Handle CORS preflight
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'success'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+            return response
+            
         try:
             from .models import Video, TemporalAnnotation, BoundingBoxAnnotation
             

@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaArrowRight, FaPlayCircle, FaBookOpen, FaBug, FaLightbulb, FaGithub, FaPaperPlane, FaUser, FaEnvelope, FaCopy, FaShare } from 'react-icons/fa';
+import { FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaArrowRight, FaPlayCircle, FaBookOpen, FaBug, FaLightbulb, FaGithub, FaPaperPlane, FaUser, FaEnvelope, FaCopy, FaShare, FaFolder, FaExchangeAlt } from 'react-icons/fa';
 import './Home.css';
 import axios from 'axios';
+import { useProject } from '../../contexts/ProjectContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Home = () => {
     const navigate = useNavigate();
+    const { currentProject, projects, switchProject } = useProject();
+    const { user } = useAuth();
     const [projectStats, setProjectStats] = useState(null);
     const [currentStage, setCurrentStage] = useState('import');
     
@@ -218,6 +222,67 @@ ${feedbackForm.description}
                         This tool helps researchers prepare video data for fall detection AI models. 
                         Follow the 5-step workflow below to import, process, annotate, and export your data.
                     </p>
+                    
+                    {/* Project Selector */}
+                    <div className="project-selector">
+                        <div className="current-project-info">
+                            <FaFolder className="project-icon" />
+                            <div className="project-details">
+                                <label>Current Project:</label>
+                                {currentProject ? (
+                                    <>
+                                        <h3>{currentProject.name}</h3>
+                                        <span className={`project-status ${currentProject.status}`}>
+                                            {currentProject.status}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <p className="no-project">No project selected</p>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="project-actions">
+                            {projects && projects.length > 1 && (
+                                <select 
+                                    className="project-dropdown"
+                                    value={currentProject?.project_id || ''}
+                                    onChange={(e) => {
+                                        const project = projects.find(p => p.project_id === parseInt(e.target.value));
+                                        if (project) switchProject(project);
+                                    }}
+                                >
+                                    <option value="">Select a project...</option>
+                                    {projects.map(project => (
+                                        <option key={project.project_id} value={project.project_id}>
+                                            {project.name} ({project.status})
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            <button 
+                                className="view-projects-btn"
+                                onClick={() => navigate('/projects')}
+                            >
+                                <FaExchangeAlt /> View All Projects
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {currentProject && currentProject.progress_percentage !== undefined && (
+                        <div className="project-progress-bar">
+                            <div className="progress-header">
+                                <span>Project Progress</span>
+                                <span>{currentProject.progress_percentage}%</span>
+                            </div>
+                            <div className="progress-track">
+                                <div 
+                                    className="progress-fill"
+                                    style={{ width: `${currentProject.progress_percentage}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
                     
                     {projectStats && (
                         <div className="quick-stats">

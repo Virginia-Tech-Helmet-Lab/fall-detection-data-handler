@@ -33,6 +33,133 @@
   flex-grow: 1;
 }
 
+/* User Menu Styles */
+.user-menu-container {
+  position: relative;
+}
+
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.user-menu-trigger:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-name {
+  font-weight: 600;
+}
+
+.user-role {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  border: 1px solid #e9ecef;
+  min-width: 250px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.user-menu-header {
+  padding: 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  text-align: center;
+}
+
+.user-menu-header strong {
+  display: block;
+  color: #333;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.user-menu-header small {
+  display: block;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.user-menu-header .role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.role-badge.admin {
+  background: #dc3545;
+  color: white;
+}
+
+.role-badge.annotator {
+  background: #007bff;
+  color: white;
+}
+
+.role-badge.reviewer {
+  background: #28a745;
+  color: white;
+}
+
+.user-menu-actions {
+  padding: 8px 0;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: #333;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+.user-menu-item:hover {
+  background: #f8f9fa;
+}
+
+.logout-button {
+  color: #dc3545 !important;
+  border-top: 1px solid #e9ecef;
+}
+
+.logout-button:hover {
+  background: #f8f9fa !important;
+}
+
 .navigation-tabs {
   display: flex;
   background-color: var(--vt-bg-primary);

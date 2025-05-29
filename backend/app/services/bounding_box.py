@@ -12,10 +12,13 @@ def get_bbox_annotations(video_id):
         'y': bbox.y,
         'width': bbox.width,
         'height': bbox.height,
-        'part_label': bbox.part_label
+        'part_label': bbox.part_label,
+        'created_by': bbox.created_by,
+        'created_at': bbox.created_at.isoformat() if bbox.created_at else None,
+        'annotator_name': bbox.annotator.full_name if bbox.annotator else None
     } for bbox in bboxes]
 
-def save_bbox_annotation(data):
+def save_bbox_annotation(data, user_id=None):
     """Save a new bounding box annotation"""
     bbox = BoundingBoxAnnotation(
         video_id=data.get('video_id'),
@@ -24,11 +27,14 @@ def save_bbox_annotation(data):
         y=data.get('y'),
         width=data.get('width'),
         height=data.get('height'),
-        part_label=data.get('part_label')
+        part_label=data.get('part_label'),
+        created_by=user_id
     )
     db.session.add(bbox)
     db.session.commit()
     return {
         'status': 'saved',
-        'bbox_id': bbox.bbox_id
+        'bbox_id': bbox.bbox_id,
+        'created_by': bbox.created_by,
+        'created_at': bbox.created_at.isoformat() if bbox.created_at else None
     }

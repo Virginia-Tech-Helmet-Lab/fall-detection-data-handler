@@ -1,0 +1,223 @@
+.user-performance {
+    padding: 20px;
+}
+
+.performance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.performance-header h2 {
+    font-size: 1.5rem;
+    color: #333;
+    margin: 0;
+}
+
+.time-range-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.time-range-selector label {
+    font-weight: 500;
+    color: #666;
+}
+
+.time-range-selector select {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+    cursor: pointer;
+}
+
+/* Performance Cards */
+.performance-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.perf-card {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.perf-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.perf-card .card-icon {
+    font-size: 2rem;
+    opacity: 0.8;
+}
+
+.perf-card.video-stats .card-icon { color: #3498db; }
+.perf-card.annotation-stats .card-icon { color: #2ecc71; }
+.perf-card.review-stats .card-icon { color: #f39c12; }
+.perf-card.reviewer-stats .card-icon { color: #9b59b6; }
+
+.card-content {
+    flex: 1;
+}
+
+.card-content h3 {
+    font-size: 1rem;
+    color: #666;
+    margin: 0 0 15px 0;
+    font-weight: 500;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #333;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #999;
+    text-transform: uppercase;
+    display: block;
+    margin-top: 2px;
+}
+
+.completion-rate,
+.quality-score,
+.approval-rate,
+.avg-time {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 0.875rem;
+}
+
+.completion-rate strong,
+.approval-rate strong,
+.avg-time strong {
+    color: var(--primary-maroon);
+    font-size: 1.1rem;
+}
+
+.quality-score {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.score-display {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.score-display strong {
+    font-size: 1.5rem;
+    color: var(--primary-maroon);
+}
+
+.score-max {
+    font-size: 1rem;
+    color: #999;
+}
+
+/* Activity Chart */
+.activity-chart {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 40px;
+    height: 400px;
+}
+
+/* Performance Summary */
+.performance-summary {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.performance-summary h3 {
+    font-size: 1.25rem;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.summary-content p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.summary-content strong {
+    color: var(--primary-maroon);
+    font-weight: 600;
+}
+
+/* Loading and Error States */
+.loading-spinner {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.error-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #e74c3c;
+    font-size: 1rem;
+    background-color: #fee;
+    border-radius: 8px;
+    border: 1px solid #fcc;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .performance-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .performance-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    
+    .activity-chart {
+        height: 300px;
+    }
+}

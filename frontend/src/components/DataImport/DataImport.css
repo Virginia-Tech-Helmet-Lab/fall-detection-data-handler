@@ -405,3 +405,90 @@
     background-color: #cccccc;
     cursor: not-allowed;
 }
+
+/* Project Context Styles */
+.import-project-context {
+    margin: 20px 0;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.project-warning {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.project-icon {
+    font-size: 1.5rem;
+    color: #660000;
+}
+
+.warning-icon {
+    font-size: 1.2rem;
+    color: #f57c00;
+    margin-right: 8px;
+}
+
+.project-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.project-info strong {
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.project-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.project-status.setup {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.project-status.active {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.project-status.completed {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.no-project-warning {
+    color: #d32f2f;
+    font-weight: 500;
+}
+
+.project-selector-compact {
+    margin-left: auto;
+}
+
+.project-select {
+    padding: 8px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.project-select:focus {
+    outline: none;
+    border-color: #660000;
+}

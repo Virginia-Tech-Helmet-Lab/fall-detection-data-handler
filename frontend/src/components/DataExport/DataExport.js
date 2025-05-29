@@ -78,10 +78,21 @@ const DataExport = () => {
     const fetchExportStats = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('http://localhost:5000/api/export/stats');
+            const response = await axios.get('http://localhost:5000/api/export/stats', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
             setExportStats(response.data);
         } catch (error) {
             console.error('Error fetching export stats:', error);
+            // Set some default values if the call fails
+            setExportStats({
+                confirmedVideos: 0,
+                totalAnnotations: 0,
+                fallEvents: 0,
+                boundingBoxes: 0
+            });
         } finally {
             setLoading(false);
         }
@@ -89,10 +100,15 @@ const DataExport = () => {
 
     const fetchVideoList = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/videos');
+            const response = await axios.get('http://localhost:5000/api/videos', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
             setVideoList(response.data);
         } catch (error) {
             console.error('Error fetching video list:', error);
+            setVideoList([]);
         }
     };
 
@@ -125,7 +141,10 @@ const DataExport = () => {
                 };
             
             const response = await axios.post(endpoint, exportRequest, {
-                responseType: 'blob'
+                responseType: 'blob',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
             });
 
             // Create download link

@@ -1,23 +1,36 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaCheck } from 'react-icons/fa';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { FaHome, FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaCheck, FaUser, FaSignOutAlt, FaUserCog, FaFolder, FaChartBar } from 'react-icons/fa';
 import './DockingBar.css';
 import vtLogo from '../assets/vt-logo.jpeg'; // Correct the path
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const DockingBar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const path = location.pathname;
   const [stageCompletion, setStageCompletion] = useState({});
+  const [showUserMenu, setShowUserMenu] = useState(false);
   
-  const tabs = [
-    { name: 'Home', path: '/', icon: <FaHome />, stage: 'home' },
-    { name: '1. Import Data', path: '/import', icon: <FaUpload />, stage: 'import' },
-    { name: '2. Normalize', path: '/normalize', icon: <FaCog />, stage: 'normalize' },
-    { name: '3. Label', path: '/labeling', icon: <FaTags />, stage: 'label' },
-    { name: '4. Review', path: '/review', icon: <FaCheckCircle />, stage: 'review' },
-    { name: '5. Export', path: '/export', icon: <FaDownload />, stage: 'export' }
+  const { user, logout, isAdmin, isReviewer } = useAuth();
+  
+  // Filter tabs based on user role
+  const getAllTabs = () => [
+    { name: 'Home', path: '/', icon: <FaHome />, stage: 'home', roles: ['admin', 'annotator', 'reviewer'] },
+    { name: 'Projects', path: '/projects', icon: <FaFolder />, stage: 'projects', roles: ['admin', 'annotator', 'reviewer'] },
+    { name: '1. Import Data', path: '/import', icon: <FaUpload />, stage: 'import', roles: ['admin', 'reviewer'] },
+    { name: '2. Normalize', path: '/normalize', icon: <FaCog />, stage: 'normalize', roles: ['admin', 'annotator', 'reviewer'] },
+    { name: '3. Label', path: '/labeling', icon: <FaTags />, stage: 'label', roles: ['admin', 'annotator', 'reviewer'] },
+    { name: '4. Review', path: '/review', icon: <FaCheckCircle />, stage: 'review', roles: ['admin', 'reviewer'] },
+    { name: '5. Export', path: '/export', icon: <FaDownload />, stage: 'export', roles: ['admin', 'reviewer'] },
+    { name: 'Analytics', path: '/analytics', icon: <FaChartBar />, stage: 'analytics', roles: ['admin', 'annotator', 'reviewer'] },
+    { name: 'Users', path: '/users', icon: <FaUserCog />, stage: 'users', roles: ['admin'] }
   ];
+
+  const tabs = getAllTabs().filter(tab => 
+    tab.roles.includes(user?.role?.toLowerCase())
+  );
   
   useEffect(() => {
     checkStageCompletion();
@@ -25,7 +38,17 @@ const DockingBar = () => {
   
   const checkStageCompletion = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/export/stats');
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('No token available for stage completion check');
+        return;
+      }
+      
+      const response = await axios.get('http://localhost:5000/api/export/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const stats = response.data;
       
       const completion = {
@@ -38,7 +61,15 @@ const DockingBar = () => {
       
       setStageCompletion(completion);
     } catch (error) {
-      console.error('Error checking stage completion:', error);
+      console.log('Stage completion check failed (this is normal during initial load):', error.response?.status || error.message);
+      // Set default completion state
+      setStageCompletion({
+        import: false,
+        normalize: false,
+        label: false,
+        review: false,
+        export: false
+      });
     }
   };
   
@@ -55,7 +86,16 @@ const DockingBar = () => {
       className += ' completed';
     }
     
-    // Check if this tab should be accessible
+    // Check if user is admin or reviewer - they can access everything
+    const isAdminUser = user?.role === 'ADMIN' || user?.role === 'admin';
+    const isReviewerUser = user?.role === 'REVIEWER' || user?.role === 'reviewer';
+    
+    if (isAdminUser || isReviewerUser) {
+      // Admin and Reviewer users never get disabled tabs
+      return className;
+    }
+    
+    // For annotator users, check accessibility based on workflow progression
     const stageOrder = ['import', 'normalize', 'label', 'review', 'export'];
     const tabIndex = stageOrder.indexOf(tab.stage);
     
@@ -67,10 +107,10 @@ const DockingBar = () => {
       }
     }
     
-    // Tab is accessible if it's home, completed, or the next stage
-    const isAccessible = tab.stage === 'home' || 
-                        stageCompletion[tab.stage] || 
-                        tabIndex <= lastCompletedIndex + 1;
+    const isAlwaysAccessible = ['home', 'projects', 'users', 'analytics'].includes(tab.stage);
+    const isWorkflowAccess = stageCompletion[tab.stage] || tabIndex <= lastCompletedIndex + 1;
+    
+    const isAccessible = isAlwaysAccessible || isWorkflowAccess;
     
     if (!isAccessible) {
       className += ' disabled';
@@ -78,18 +118,75 @@ const DockingBar = () => {
     
     return className;
   };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const toggleUserMenu = () => {
+    setShowUserMenu(!showUserMenu);
+  };
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserMenu && !event.target.closest('.user-menu-container')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
   
   return (
     <div className="docking-bar">
       <div className="docking-bar-top">
         <img src={vtLogo} alt="Virginia Tech Logo" className="app-logo" />
         <h1 className="app-title">Fall Detection Data Handler</h1>
+        
+        {/* User Menu */}
+        <div className="user-menu-container">
+          <button className="user-menu-trigger" onClick={toggleUserMenu}>
+            <FaUser />
+            <span className="user-name">{user?.full_name || user?.username}</span>
+            <span className="user-role">{user?.role}</span>
+          </button>
+          
+          {showUserMenu && (
+            <div className="user-menu-dropdown">
+              <div className="user-menu-header">
+                <strong>{user?.full_name}</strong>
+                <small>{user?.email}</small>
+                <span className={`role-badge ${user?.role}`}>
+                  {user?.role?.toUpperCase()}
+                </span>
+              </div>
+              
+              <div className="user-menu-actions">
+                {isAdmin() && (
+                  <Link to="/users" className="user-menu-item" onClick={() => setShowUserMenu(false)}>
+                    <FaUserCog /> Manage Users
+                  </Link>
+                )}
+                
+                <button className="user-menu-item logout-button" onClick={handleLogout}>
+                  <FaSignOutAlt /> Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       
       <div className="navigation-tabs">
         {tabs.map((tab, index) => {
           const tabClass = getTabClassName(tab);
-          const isDisabled = tabClass.includes('disabled');
+          const isAdminUser = user?.role === 'ADMIN' || user?.role === 'admin';
+          const isDisabled = tabClass.includes('disabled') && !isAdminUser;
           
           return isDisabled ? (
             <div 
