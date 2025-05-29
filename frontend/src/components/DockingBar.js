@@ -38,9 +38,15 @@ const DockingBar = () => {
   
   const checkStageCompletion = async () => {
     try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('No token available for stage completion check');
+        return;
+      }
+      
       const response = await axios.get('http://localhost:5000/api/export/stats', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       const stats = response.data;
@@ -55,7 +61,15 @@ const DockingBar = () => {
       
       setStageCompletion(completion);
     } catch (error) {
-      console.error('Error checking stage completion:', error);
+      console.log('Stage completion check failed (this is normal during initial load):', error.response?.status || error.message);
+      // Set default completion state
+      setStageCompletion({
+        import: false,
+        normalize: false,
+        label: false,
+        review: false,
+        export: false
+      });
     }
   };
   

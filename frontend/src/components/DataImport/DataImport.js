@@ -17,6 +17,11 @@ const DataImport = () => {
     const navigate = useNavigate();
     const { currentProject, projects, switchProject } = useProject();
 
+    // Debug logging
+    console.log('DataImport: Current project:', currentProject);
+    console.log('DataImport: Available projects:', projects);
+    console.log('DataImport: Number of projects:', projects?.length || 0);
+
     // Common success handler for all import methods
     const handleImportSuccess = () => {
         setMessage('Upload successful! Redirecting to normalization...');

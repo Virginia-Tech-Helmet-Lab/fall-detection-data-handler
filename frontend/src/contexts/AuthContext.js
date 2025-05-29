@@ -195,6 +195,7 @@ export const AuthProvider = ({ children }) => {
     const value = {
         // State
         user,
+        token: localStorage.getItem('access_token'), // Add token to context
         loading,
         error,
 

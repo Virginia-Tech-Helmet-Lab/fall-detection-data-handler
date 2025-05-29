@@ -27,6 +27,33 @@
     font-size: 1.1rem;
 }
 
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.refresh-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.refresh-btn:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(108, 117, 125, 0.3);
+}
+
 .create-project-btn {
     background: linear-gradient(135deg, #660000 0%, #990000 100%);
     color: white;

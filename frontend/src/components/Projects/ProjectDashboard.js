@@ -8,14 +8,24 @@ import './ProjectDashboard.css';
 
 const ProjectDashboard = () => {
     const { user } = useAuth();
-    const { projects, loading, error, fetchProjects, switchProject } = useProject();
+    const projectContext = useProject();
+    console.log('ProjectDashboard: Full project context:', projectContext);
+    const { projects, loading, error, fetchProjects, switchProject } = projectContext;
     const navigate = useNavigate();
     const [showArchived, setShowArchived] = useState(false);
     const [filterStatus, setFilterStatus] = useState('all');
 
     useEffect(() => {
-        fetchProjects(showArchived);
-    }, [fetchProjects, showArchived]);
+        console.log('ProjectDashboard: Attempting to fetch projects, showArchived:', showArchived);
+        console.log('ProjectDashboard: Current projects array:', projects);
+        console.log('ProjectDashboard: Current user:', user);
+        
+        // Force fetch projects regardless of dependencies
+        if (user) {
+            console.log('ProjectDashboard: User is present, fetching projects...');
+            fetchProjects(showArchived);
+        }
+    }, [showArchived, user]); // Remove fetchProjects dependency to avoid stale closure
 
     const handleProjectClick = (project) => {
         switchProject(project);
@@ -56,11 +66,25 @@ const ProjectDashboard = () => {
                     <h1>Projects</h1>
                     <p>Manage your fall detection annotation projects</p>
                 </div>
-                {user?.role === 'admin' && (
-                    <button className="create-project-btn" onClick={handleCreateProject}>
-                        <FaPlus /> New Project
+                <div className="header-actions">
+                    <button className="refresh-btn" onClick={() => {
+                        console.log('Refresh button clicked!');
+                        console.log('fetchProjects function:', fetchProjects);
+                        console.log('showArchived:', showArchived);
+                        if (fetchProjects) {
+                            fetchProjects(showArchived);
+                        } else {
+                            console.error('fetchProjects is not defined!');
+                        }
+                    }}>
+                        🔄 Refresh
                     </button>
-                )}
+                    {user?.role === 'admin' && (
+                        <button className="create-project-btn" onClick={handleCreateProject}>
+                            <FaPlus /> New Project
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Statistics Cards */}

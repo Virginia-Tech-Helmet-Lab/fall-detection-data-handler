@@ -40,22 +40,43 @@ export const ProjectProvider = ({ children }) => {
 
     // Fetch all projects
     const fetchProjects = useCallback(async (includeArchived = false) => {
-        if (!token) return;
+        console.log('=== fetchProjects called ===');
+        console.log('Token available?', token ? 'Yes' : 'No');
+        console.log('Token value:', token);
+        
+        if (!token) {
+            console.log('❌ No token available, skipping fetch');
+            return;
+        }
         
         setLoading(true);
         setError(null);
         
         try {
+            console.log('Fetching projects with token:', token ? 'Present' : 'Missing');
+            console.log('Current user:', user);
+            console.log('Making API call to:', projectApi.defaults.baseURL);
+            
             const response = await projectApi.get('', {
                 params: { include_archived: includeArchived }
             });
-            setProjects(response.data.projects);
-            return response.data.projects;
+            
+            console.log('Projects API response:', response.data);
+            console.log('Number of projects returned:', response.data.projects?.length || 0);
+            setProjects(response.data.projects || []);
+            return response.data.projects || [];
         } catch (err) {
             const message = err.response?.data?.error || 'Failed to fetch projects';
             setError(message);
             console.error('Error fetching projects:', err);
-            return [];
+            console.error('Error details:', {
+                status: err.response?.status,
+                data: err.response?.data,
+                headers: err.response?.headers
+            });
+            
+            // Don't clear projects on error - keep existing ones
+            return projects;
         } finally {
             setLoading(false);
         }
@@ -69,7 +90,10 @@ export const ProjectProvider = ({ children }) => {
         try {
             const response = await projectApi.post('', projectData);
             const newProject = response.data.project;
-            setProjects(prev => [...prev, newProject]);
+            
+            // Refresh the entire project list to ensure consistency
+            await fetchProjects();
+            
             return { success: true, project: newProject };
         } catch (err) {
             const message = err.response?.data?.error || 'Failed to create project';
@@ -78,7 +102,7 @@ export const ProjectProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [fetchProjects]);
 
     // Update project
     const updateProject = useCallback(async (projectId, updates) => {
