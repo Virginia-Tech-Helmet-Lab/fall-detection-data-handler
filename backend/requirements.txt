@@ -5,6 +5,7 @@ flask-sqlalchemy==3.1.1
 flask-jwt-extended
 flask-login
 flask-bcrypt
+flask-limiter==3.5.0
 pytest==8.3.5
 pytest-flask==1.3.0
 opencv-python==4.11.0.86

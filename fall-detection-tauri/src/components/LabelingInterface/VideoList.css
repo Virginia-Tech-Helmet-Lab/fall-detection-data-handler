@@ -1,0 +1,214 @@
+/* VideoList.css */
+.video-list {
+    padding: 10px;
+}
+
+.video-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.video-item {
+    margin-bottom: 8px;
+    
+}
+
+.video-item button {
+    width: 100%;
+    text-align: left;
+    padding: 10px;
+    background-color: var(--vt-bg-secondary);
+    border: 1px solid var(--vt-border-light);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.video-item button:hover {
+    background-color: rgba(232, 119, 34, 0.1); /* Light burnt orange */
+}
+
+.video-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+    word-break: break-word;
+    color: var(--vt-chicago-maroon);
+    font-size: 1rem;
+}
+
+.video-specs {
+    font-size: 0.8rem;
+    color: var(--vt-text-tertiary);
+}
+
+.loading, .no-videos {
+    padding: 10px;
+    text-align: center;
+    color: var(--vt-text-tertiary);
+}
+
+.error {
+    color: var(--vt-error);
+    background-color: rgba(134, 31, 65, 0.1);
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+}
+
+/* Enhanced Video List Styles */
+.video-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--vt-border-light);
+}
+
+.video-list-header h3 {
+    margin: 0;
+    color: var(--vt-chicago-maroon);
+}
+
+.project-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85rem;
+    color: var(--vt-burnt-orange);
+}
+
+/* Filter Tabs */
+.filter-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--vt-border-light);
+}
+
+.filter-tab {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--vt-text-secondary);
+    transition: all 0.2s;
+}
+
+.filter-tab:hover {
+    color: var(--vt-chicago-maroon);
+}
+
+.filter-tab.active {
+    color: var(--vt-chicago-maroon);
+    border-bottom-color: var(--vt-chicago-maroon);
+    font-weight: 600;
+}
+
+/* Enhanced Video Item */
+.video-item button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.video-info {
+    flex: 1;
+    min-width: 0; /* Allow text truncation */
+}
+
+.video-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.video-name svg {
+    flex-shrink: 0;
+    color: var(--vt-burnt-orange);
+}
+
+.assignment-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--vt-text-tertiary);
+}
+
+.assignment-info svg {
+    font-size: 0.9rem;
+}
+
+/* Status Badge */
+.video-status {
+    flex-shrink: 0;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.status-badge.in_progress {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.reviewed {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* No Videos State */
+.no-videos {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 40px 20px;
+    color: var(--vt-text-tertiary);
+}
+
+.no-videos svg {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.no-videos p {
+    margin: 0;
+    font-weight: 500;
+}
+
+.no-videos small {
+    font-size: 0.85rem;
+}
+
+/* Queue Stats */
+.queue-stats {
+    text-align: center;
+    padding: 10px;
+    border-top: 1px solid var(--vt-border-light);
+    margin-top: 10px;
+    color: var(--vt-text-tertiary);
+}

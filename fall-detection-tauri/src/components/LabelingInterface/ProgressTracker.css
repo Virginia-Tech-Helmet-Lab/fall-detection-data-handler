@@ -1,0 +1,195 @@
+/* Progress Tracker Styles */
+
+.progress-tracker {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.progress-tracker.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.progress-tracker.error {
+    text-align: center;
+    color: #dc3545;
+    padding: 40px 20px;
+}
+
+.progress-tracker h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+/* Progress Summary */
+.progress-summary {
+    margin-bottom: 30px;
+}
+
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 20px;
+    background: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+    transition: width 0.3s ease;
+    border-radius: 10px;
+}
+
+.progress-percentage {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    min-width: 50px;
+    text-align: right;
+}
+
+/* Progress Stats */
+.progress-stats {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.stat-icon {
+    font-size: 1.1rem;
+}
+
+.stat-icon.completed {
+    color: #28a745;
+}
+
+.stat-icon.in-progress {
+    color: #ffc107;
+}
+
+.stat-icon.not-started {
+    color: #6c757d;
+}
+
+/* Video Progress List */
+.video-progress-list {
+    border-top: 1px solid #e9ecef;
+    padding-top: 20px;
+}
+
+.video-progress-list h4 {
+    margin: 0 0 15px 0;
+    color: #666;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.video-items {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.video-progress-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.video-progress-item:hover {
+    background: #f8f9fa;
+}
+
+.video-progress-item .status-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.video-progress-item .status-icon.completed {
+    color: #28a745;
+}
+
+.video-progress-item .status-icon.in-progress {
+    color: #ffc107;
+}
+
+.video-progress-item .status-icon.not-started {
+    color: #dee2e6;
+}
+
+.video-name {
+    flex: 1;
+    font-size: 0.9rem;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.annotation-counts {
+    display: flex;
+    gap: 15px;
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.annotation-counts .count {
+    white-space: nowrap;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #660000;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .progress-stats {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .video-items {
+        max-height: 200px;
+    }
+    
+    .annotation-counts {
+        flex-direction: column;
+        gap: 5px;
+        font-size: 0.75rem;
+    }
+}

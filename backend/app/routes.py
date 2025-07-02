@@ -18,14 +18,13 @@ import traceback
 import json
 import io
 import sys
-from flask_cors import CORS, cross_origin
+from flask_cors import cross_origin
 from .blueprints import api_bp, api_routes_registered
 import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Enable CORS for all routes in the blueprint
-CORS(api_bp, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+# CORS is now handled at the app level in __init__.py
 
 # Add this function to check for allowed file extensions
 def allowed_file(filename):

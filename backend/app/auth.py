@@ -5,7 +5,7 @@ Handles user authentication, session management, and role-based access control.
 
 from functools import wraps
 from datetime import datetime
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_bcrypt import check_password_hash, generate_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
@@ -13,9 +13,15 @@ import logging
 
 from .models import User
 from .database import db
+from .utils.security import PasswordValidator, AccountSecurity, sanitize_input
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 logger = logging.getLogger(__name__)
+
+# Get limiter instance from current app
+def get_limiter():
+    from flask import current_app
+    return current_app.extensions.get('limiter')
 
 @auth_bp.route('/test', methods=['GET'])
 def test():
@@ -93,15 +99,25 @@ def login():
             logger.warning(f"User not found: {username}")
             return jsonify({'error': 'Invalid credentials'}), 401
             
-        logger.info(f"User found: {user.username}, checking password...")
+        logger.info(f"User found: {user.username}, checking account status...")
         
+        # Check if account is locked
+        if AccountSecurity.check_account_locked(user):
+            logger.warning(f"Locked account attempted login: {username}")
+            return jsonify({'error': 'Account is temporarily locked due to too many failed login attempts'}), 401
+        
+        # Check password
         if not user.check_password(password):
             logger.warning(f"Invalid password for user: {username}")
+            AccountSecurity.record_failed_login(user)
             return jsonify({'error': 'Invalid credentials'}), 401
         
         if not user.is_active:
             logger.warning(f"Inactive user attempted login: {username}")
             return jsonify({'error': 'Account is deactivated'}), 401
+        
+        # Reset failed attempts on successful login
+        AccountSecurity.reset_failed_attempts(user)
         
         # Log the user in
         login_user(user, remember=True)
@@ -114,11 +130,18 @@ def login():
         
         logger.info(f"User {user.username} logged in successfully")
         
-        return jsonify({
+        response_data = {
             'message': 'Login successful',
             'user': user.to_dict(),
             'access_token': access_token
-        }), 200
+        }
+        
+        # Check if password needs to be changed
+        if user.must_change_password:
+            response_data['must_change_password'] = True
+            response_data['message'] = 'Login successful. Please change your password.'
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
@@ -206,11 +229,16 @@ def register():
             if not data.get(field):
                 return jsonify({'error': f'{field} is required'}), 400
         
-        username = data.get('username')
-        email = data.get('email')
-        password = data.get('password')
-        full_name = data.get('full_name')
+        username = sanitize_input(data.get('username'), max_length=50)
+        email = sanitize_input(data.get('email'), max_length=100)
+        password = data.get('password')  # Don't sanitize passwords
+        full_name = sanitize_input(data.get('full_name'), max_length=100)
         role = data.get('role')
+        
+        # Validate password
+        is_valid, password_errors = PasswordValidator.validate(password)
+        if not is_valid:
+            return jsonify({'error': 'Password does not meet requirements', 'details': password_errors}), 400
         
         # Validate role
         valid_roles = ['admin', 'annotator', 'reviewer']
@@ -249,6 +277,10 @@ def register():
             role=role_enum
         )
         user.set_password(password)
+        
+        # Set password change requirement for non-admin created users
+        if role != 'admin':
+            user.must_change_password = True
         
         db.session.add(user)
         db.session.commit()
@@ -546,43 +578,94 @@ def debug_users():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@auth_bp.route('/debug/test-login', methods=['POST'])
-def test_login():
-    """Debug login without authentication to see what's happening"""
+@auth_bp.route('/change-password', methods=['POST'])
+@jwt_required()
+def change_password():
+    """Change user password"""
     try:
-        data = request.json
-        username = data.get('username', 'admin')
-        password = data.get('password', 'admin123')
-        
-        from .models import User
-        from flask_bcrypt import check_password_hash
-        
-        # Find user
-        user = User.query.filter(
-            (User.username == username) | (User.email == username)
-        ).first()
+        user_id = get_jwt_identity()
+        user = User.query.get(int(user_id))
         
         if not user:
-            return jsonify({'error': 'User not found', 'debug': 'No user with that username/email'}), 404
+            return jsonify({'error': 'User not found'}), 404
         
-        # Check password
-        password_match = user.check_password(password)
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            return jsonify({'error': 'Current password and new password are required'}), 400
+        
+        # Verify current password
+        if not user.check_password(current_password):
+            return jsonify({'error': 'Current password is incorrect'}), 401
+        
+        # Validate new password
+        is_valid, password_errors = PasswordValidator.validate(new_password)
+        if not is_valid:
+            return jsonify({'error': 'New password does not meet requirements', 'details': password_errors}), 400
+        
+        # Check if new password is same as current
+        if user.check_password(new_password):
+            return jsonify({'error': 'New password must be different from current password'}), 400
+        
+        # Update password
+        user.set_password(new_password)
+        user.password_changed_at = datetime.utcnow()
+        user.must_change_password = False
+        
+        db.session.commit()
+        
+        logger.info(f"User {user.username} changed their password")
+        
+        return jsonify({'message': 'Password changed successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Password change error: {str(e)}")
+        return jsonify({'error': 'Failed to change password'}), 500
+
+@auth_bp.route('/reset-password/<int:user_id>', methods=['POST'])
+@jwt_role_required('admin')
+def reset_password(user_id):
+    """Admin reset user password"""
+    try:
+        target_user = User.query.get(user_id)
+        if not target_user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        data = request.json
+        new_password = data.get('new_password')
+        
+        if not new_password:
+            return jsonify({'error': 'New password is required'}), 400
+        
+        # Validate new password
+        is_valid, password_errors = PasswordValidator.validate(new_password)
+        if not is_valid:
+            return jsonify({'error': 'Password does not meet requirements', 'details': password_errors}), 400
+        
+        # Update password
+        target_user.set_password(new_password)
+        target_user.password_changed_at = datetime.utcnow()
+        target_user.must_change_password = True
+        target_user.failed_login_attempts = 0
+        target_user.locked_until = None
+        
+        db.session.commit()
+        
+        admin_user = request.current_user
+        logger.info(f"Admin {admin_user.username} reset password for user {target_user.username}")
         
         return jsonify({
-            'user_found': True,
-            'username': user.username,
-            'email': user.email,
-            'role': str(user.role),
-            'is_active': user.is_active,
-            'password_hash_exists': bool(user.password_hash),
-            'password_hash_length': len(user.password_hash) if user.password_hash else 0,
-            'password_match': password_match,
-            'test_password': password
+            'message': 'Password reset successfully',
+            'must_change_password': True
         }), 200
         
     except Exception as e:
-        import traceback
-        return jsonify({
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 500
+        db.session.rollback()
+        logger.error(f"Password reset error: {str(e)}")
+        return jsonify({'error': 'Failed to reset password'}), 500

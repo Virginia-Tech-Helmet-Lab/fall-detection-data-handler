@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo --version)",
+      "Bash(npm --version)",
+      "Bash(node:*)",
+      "Bash(cargo:*)",
+      "Bash(npx create-tauri-app:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(npm install)",
+      "Bash(rm:*)",
+      "Bash(npm create:*)",
+      "Bash(touch:*)",
+      "Bash(npm install:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(sqlite3:*)"
+    ],
+    "deny": []
+  }
+}

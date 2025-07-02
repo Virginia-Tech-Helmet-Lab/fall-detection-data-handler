@@ -1,0 +1,75 @@
+"""
+Server Configuration Template
+Copy this file to server_config.py and update with your actual values
+"""
+import os
+
+# Your PC's IP address (run 'ipconfig' to find this)
+SERVER_IP = "192.168.1.100"  # CHANGE THIS!
+
+# Server settings
+HOST = '0.0.0.0'  # Accept connections from any IP
+PORT = 5000
+DEBUG = False  # Always False for production!
+
+# Database location (absolute path)
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Use PostgreSQL for production (recommended)
+# SQLALCHEMY_DATABASE_URI = 'postgresql://username:password@localhost:5432/fall_detection'
+
+# Or use SQLite (simpler but less scalable)
+SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(basedir, "instance", "fall_detection.db")}'
+
+# Security - MUST CHANGE THESE!
+SECRET_KEY = 'your-secret-key-here-use-python-secrets-module'
+JWT_SECRET_KEY = 'your-jwt-secret-key-here-use-different-value'
+
+# To generate secure keys, run this in Python:
+# import secrets
+# print(secrets.token_hex(32))
+
+# CORS - Allow your network
+CORS_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:5000',
+    f'http://{SERVER_IP}:3000',
+    f'http://{SERVER_IP}:5000',
+    # Add any additional client IPs here
+]
+
+# Rate limiting
+RATELIMIT_ENABLED = True
+RATELIMIT_STORAGE_URL = 'memory://'  # Use 'redis://localhost:6379' for Redis
+RATELIMIT_DEFAULT = '60 per hour'
+
+# Password policy
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_REQUIRE_UPPERCASE = True
+PASSWORD_REQUIRE_LOWERCASE = True
+PASSWORD_REQUIRE_NUMBERS = True
+PASSWORD_REQUIRE_SPECIAL = False
+
+# Account security
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION = 900  # 15 minutes
+
+# File upload limits
+MAX_UPLOAD_SIZE = 104857600  # 100MB
+UPLOAD_FOLDER = 'uploads'
+
+# Session security
+SESSION_COOKIE_SECURE = False  # Set to True if using HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Application
+APP_NAME = 'Fall Detection Data Handler'
+ADMIN_EMAIL = 'admin@yourorganization.com'
+
+# Email settings (optional - for notifications)
+# MAIL_SERVER = 'smtp.gmail.com'
+# MAIL_PORT = 587
+# MAIL_USE_TLS = True
+# MAIL_USERNAME = 'your-email@gmail.com'
+# MAIL_PASSWORD = 'your-app-password'

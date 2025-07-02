@@ -1,0 +1,37 @@
+/* Acherus Grotesque font faces */
+@font-face {
+  font-family: 'Acherus Grotesque';
+  src: url('../assets/fonts/acherus_grotesque_-_regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Acherus Grotesque';
+  src: url('../assets/fonts/acherus_grotesque_-_medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Acherus Grotesque';
+  src: url('../assets/fonts/acherus_grotesque_-_bold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Acherus Grotesque';
+  src: url('../assets/fonts/acherus_grotesque_-_bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Fallback to system fonts if VT fonts are not available */
+body {
+  font-family: 'Acherus Grotesque', Arial, sans-serif;
+}

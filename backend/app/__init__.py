@@ -3,27 +3,43 @@ from flask_cors import CORS
 from flask_login import LoginManager
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from .database import db
 import os
+import sys
 from .blueprints import api_bp
 
-def create_app(config=None):
+def create_app(config_name=None):
     app = Flask(__name__)
     
-    # Database configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fall_detection.db'  # Use PostgreSQL/MongoDB later
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Load configuration
+    if config_name is None:
+        config_name = os.environ.get('FLASK_ENV', 'development')
     
-    # File upload configuration
-    app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
-    app.config['THUMBNAIL_CACHE'] = os.path.join(app.config['UPLOAD_FOLDER'], 'thumbnails')
-    app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload
+    # Import config here to avoid circular imports
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        from config import config
+        app.config.from_object(config[config_name])
+        
+        # Initialize app with config if needed
+        if hasattr(config[config_name], 'init_app'):
+            config[config_name].init_app(app)
+    except ImportError:
+        # Fallback to old configuration if config.py doesn't exist
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fall_detection.db'
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+        app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+        app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+        app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
+        app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 86400
+        app.config['BCRYPT_LOG_ROUNDS'] = 4
     
-    # Authentication configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 86400  # 24 hours
-    app.config['REMEMBER_COOKIE_DURATION'] = 86400  # 24 hours
+    # Ensure thumbnail cache path is set
+    if 'THUMBNAIL_CACHE' not in app.config:
+        app.config['THUMBNAIL_CACHE'] = os.path.join(app.config['UPLOAD_FOLDER'], 'thumbnails')
     
     # Ensure upload and preview folders exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -47,14 +63,32 @@ def create_app(config=None):
     jwt = JWTManager(app)
     bcrypt = Bcrypt(app)
     
+    # Initialize rate limiter
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=[app.config.get('RATELIMIT_DEFAULT', '100 per hour')],
+        storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://'),
+        enabled=app.config.get('RATELIMIT_ENABLED', True)
+    )
+    
     # User loader for Flask-Login
     @login_manager.user_loader
     def load_user(user_id):
         from .models import User
         return User.query.get(int(user_id))
     
-    # Apply CORS with proper configuration - simplified approach
-    CORS(app, supports_credentials=True)
+    # Apply CORS with configuration-based origins
+    cors_origins = app.config.get('CORS_ORIGINS', [])
+    if cors_origins:
+        CORS(app, 
+             origins=cors_origins,
+             supports_credentials=True,
+             allow_headers=['Content-Type', 'Authorization'],
+             methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+    else:
+        # Fallback for development if no CORS_ORIGINS configured
+        CORS(app, supports_credentials=True)
     
     # Import routes BEFORE registering blueprints
     # This loads all the route handlers onto the blueprints
@@ -79,18 +113,7 @@ def create_app(config=None):
         app.logger.debug('Path: %s', request.path)
         app.logger.debug('Body: %s', request.get_data())
     
-    # Add global OPTIONS handler for all routes
-    @app.before_request
-    def handle_options():
-        if request.method == 'OPTIONS':
-            response = make_response()
-            origin = request.headers.get('Origin')
-            if origin in ['http://localhost:3000', 'http://127.0.0.1:3000']:
-                response.headers['Access-Control-Allow-Origin'] = origin
-                response.headers['Access-Control-Allow-Credentials'] = 'true'
-                response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-                response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-            return response
+    # Remove the global OPTIONS handler - let Flask-CORS handle it
     
     # Add after_request handler to ensure CORS headers
     @app.after_request
@@ -107,68 +130,68 @@ def create_app(config=None):
         # Create database tables
         db.create_all()
         
-        # Create default admin user if none exists
-        try:
-            from .models import User, UserRole
-            
-            # Check if admin user exists by username
-            admin_user = User.query.filter_by(username='admin').first()
-            
-            if not admin_user:
-                print(">>> Creating default admin user...")
-                admin_user = User(
-                    username='admin',
-                    email='admin@vthelmetlab.edu',
-                    full_name='System Administrator',
-                    role=UserRole.ADMIN,
-                    is_active=True
-                )
-                admin_user.set_password('admin123')  # Change this in production!
+        # Only create default users in development mode
+        if app.config.get('DEBUG', False) or config_name == 'development':
+            try:
+                from .models import User, UserRole
                 
-                db.session.add(admin_user)
-                db.session.commit()
-                print(">>> Created default admin user: admin / admin123")
-            else:
-                print(f">>> Admin user already exists: {admin_user.username} (role: {admin_user.role})")
-            
-            # Create test users for development
-            test_users = [
-                {
-                    'username': 'annotator1',
-                    'email': 'annotator1@test.com',
-                    'full_name': 'Alice Annotator',
-                    'role': UserRole.ANNOTATOR,
-                    'password': 'test123'
-                },
-                {
-                    'username': 'annotator2',
-                    'email': 'annotator2@test.com',
-                    'full_name': 'Bob Annotator',
-                    'role': UserRole.ANNOTATOR,
-                    'password': 'test123'
-                },
-                {
-                    'username': 'reviewer1',
-                    'email': 'reviewer1@test.com',
-                    'full_name': 'Carol Reviewer',
-                    'role': UserRole.REVIEWER,
-                    'password': 'test123'
-                }
-            ]
-            
-            for user_data in test_users:
-                existing_user = User.query.filter_by(username=user_data['username']).first()
-                if not existing_user:
-                    print(f">>> Creating test user: {user_data['username']} ({user_data['role'].value})")
-                    new_user = User(
-                        username=user_data['username'],
-                        email=user_data['email'],
-                        full_name=user_data['full_name'],
-                        role=user_data['role'],
+                # Check if any admin exists
+                admin_count = User.query.filter_by(role=UserRole.ADMIN).count()
+                
+                if admin_count == 0:
+                    print(">>> WARNING: No admin users found!")
+                    print(">>> Creating default admin user for development...")
+                    admin_user = User(
+                        username='admin',
+                        email='admin@example.com',
+                        full_name='Development Admin',
+                        role=UserRole.ADMIN,
                         is_active=True
                     )
-                    new_user.set_password(user_data['password'])
-                    db.session.add(new_user)
+                    admin_user.set_password('admin123')  # CHANGE IN PRODUCTION!
+                    admin_user.must_change_password = True
+                    
+                    db.session.add(admin_user)
+                    db.session.commit()
+                    print(">>> Created default admin user: admin / admin123")
+                    print(">>> ⚠️  SECURITY WARNING: Change this password immediately!")
+                else:
+                    print(f">>> Found {admin_count} admin user(s)")
+                
+                # Only create test users in development
+                if config_name == 'development':
+                    # Create test users for development
+                    test_users = [
+                        {
+                            'username': 'annotator1',
+                            'email': 'annotator1@example.com',
+                            'full_name': 'Test Annotator 1',
+                            'role': UserRole.ANNOTATOR,
+                            'password': 'test123'
+                        },
+                        {
+                            'username': 'reviewer1',
+                            'email': 'reviewer1@example.com',
+                            'full_name': 'Test Reviewer 1',
+                            'role': UserRole.REVIEWER,
+                            'password': 'test123'
+                        }
+                    ]
+                    
+                    for user_data in test_users:
+                        existing_user = User.query.filter_by(username=user_data['username']).first()
+                        if not existing_user:
+                            print(f">>> Creating test user: {user_data['username']} ({user_data['role'].value})")
+                            new_user = User(
+                                username=user_data['username'],
+                                email=user_data['email'],
+                                full_name=user_data['full_name'],
+                                role=user_data['role'],
+                                is_active=True
+                            )
+                            new_user.set_password(user_data['password'])
+                            new_user.must_change_password = True
+                            db.session.add(new_user)
                 else:
                     print(f">>> Test user already exists: {user_data['username']} ({existing_user.role})")
             

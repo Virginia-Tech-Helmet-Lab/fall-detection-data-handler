@@ -1,0 +1,118 @@
+/* LabelingInterface.css */
+.labeling-container {
+    display: flex;
+    min-height: 100vh;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+.video-list-panel {
+    flex: 0.8;
+    padding: 10px;
+    border-right: 1px solid #e0e0e0;
+    max-width: 250px;
+    overflow-y: auto;
+}
+
+.video-display-panel {
+    flex: 2;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 500px;
+}
+
+.annotation-panel-container {
+    flex: 1;
+    padding: 10px;
+    border-left: 1px solid #e0e0e0;
+    max-width: 400px;
+    overflow-y: auto;
+}
+
+.video-list-panel h3,
+.annotation-panel-container h3 {
+    font-size: 1.2rem;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    color: #333;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px;
+}
+
+.select-prompt {
+    margin-top: 100px;
+    color: #888;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.bbox-save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 4px;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.floating-review-button {
+    position: fixed;
+    bottom: 762px;
+    left: 1750px;
+    width: 110px;
+    height: 40px;
+    border-radius: 20px;
+    background-color: var(--vt-chicago-maroon, #861F41);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    z-index: 1000;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.floating-review-button:hover {
+    transform: translateY(0) scale(1.05);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
+    opacity: 1;
+}
+
+.floating-review-button:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.floating-review-button svg {
+    font-size: 1.1rem;
+    margin-right: 6px;
+}
+
+.floating-review-button:disabled {
+    background-color: #cccccc;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.video-player-container {
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 900px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

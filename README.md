@@ -96,8 +96,8 @@ npm start
 | Feature | Admin | Annotator | Reviewer |
 |---------|-------|-----------|----------|
 | User Management | ✅ | ❌ | ❌ |
-| Project Creation | ✅ | ❌ | ❌ |
-| Video Assignment | ✅ | ❌ | ❌ |
+| Project Creation | ✅ | ❌ | ✅ |
+| Video Assignment | ✅ | ❌ | ✅ |
 | Annotation | ✅ | ✅ | ✅ |
 | Review Queue | ✅ | ❌ | ✅ |
 | Analytics | ✅ | Limited | ✅ |
