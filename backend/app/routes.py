@@ -3,7 +3,7 @@ from .services.normalization import normalize_video, generate_preview
 from .services.annotation import get_annotations, save_annotation
 from flask_login import current_user
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from .models import Video, db
+from .models import Video, db, User
 from .utils.video_processing import save_file, extract_metadata, ensure_browser_compatible, extract_video_frame
 import os
 from werkzeug.utils import secure_filename
@@ -33,8 +33,10 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Guard against duplicate registration
-if not api_routes_registered:
+# Temporarily disable this check to ensure routes are registered
+if True:  # was: if not api_routes_registered:
     @api_bp.route('/upload', methods=['POST'])
+    @jwt_required()
     def upload_video():
         if 'files' not in request.files:
             return jsonify({'error': 'No files part in the request'}), 400

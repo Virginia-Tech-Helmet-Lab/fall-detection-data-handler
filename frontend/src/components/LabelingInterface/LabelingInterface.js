@@ -175,7 +175,14 @@ const LabelingInterface = () => {
     
     return (
         <div className="labeling-container">
-            <div className="video-list-panel">
+            <div className="video-list-panel" style={{
+                padding: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                border: '2px solid blue'
+            }}>
                 {/* Video Queue Navigation for Annotators */}
                 {user && user.role === 'annotator' && (
                     <VideoQueue 
@@ -188,18 +195,29 @@ const LabelingInterface = () => {
                 {user && user.role === 'annotator' && (
                     <ProgressTracker />
                 )}
-                <VideoList 
-                    onVideoSelect={handleVideoSelect} 
-                    userId={user?.user_id}
-                    projectId={currentProject?.project_id}
-                    userRole={user?.role}
-                />
+                <div style={{ 
+                    flex: '1 1 auto',
+                    height: '100%',
+                    minHeight: 0, 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    backgroundColor: 'rgba(255, 255, 0, 0.2)', // Debug: yellow background
+                    border: '2px solid orange', // Debug: orange border
+                    boxSizing: 'border-box'
+                }}>
+                    <VideoList 
+                        onVideoSelect={handleVideoSelect} 
+                        userId={user?.user_id}
+                        projectId={currentProject?.project_id}
+                        userRole={user?.role}
+                    />
+                </div>
             </div>
             <div className="video-display-panel">
                 {selectedVideo ? (
                     <div className="video-player-container" style={{ position: 'relative' }}>
                         <VideoPlayer 
-                            videoUrl={`http://localhost:5000/api/static/${selectedVideo.filename}`} 
+                            videoUrl={`http://localhost:5000/api/stream/${selectedVideo.filename}`} 
                             onPositionChange={handlePositionChange}
                         />
                         <div style={{

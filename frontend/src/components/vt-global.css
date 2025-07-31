@@ -36,7 +36,7 @@ button:disabled {
 
 /* Adjust for docking bar */
 .main-content {
-  padding: 1.5rem;
+  padding: 0; /* Remove padding for full-height layouts like labeling interface */
   margin-top: 0; /* The docking bar is sticky, so no need for margin */
 }
 

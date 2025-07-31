@@ -7,23 +7,19 @@ from .database import db
 import os
 from .blueprints import api_bp
 
-def create_app(config=None):
+def create_app(config_name=None):
     app = Flask(__name__)
     
-    # Database configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fall_detection.db'  # Use PostgreSQL/MongoDB later
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Load configuration
+    if config_name is None:
+        config_name = os.environ.get('FLASK_ENV', 'development')
     
-    # File upload configuration
-    app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
-    app.config['THUMBNAIL_CACHE'] = os.path.join(app.config['UPLOAD_FOLDER'], 'thumbnails')
-    app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload
+    from config import config
+    app.config.from_object(config[config_name])
     
-    # Authentication configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 86400  # 24 hours
-    app.config['REMEMBER_COOKIE_DURATION'] = 86400  # 24 hours
+    # Override with any passed config
+    if config:
+        app.config.update(config)
     
     # Ensure upload and preview folders exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -53,16 +49,20 @@ def create_app(config=None):
         from .models import User
         return User.query.get(int(user_id))
     
-    # Apply CORS with proper configuration - simplified approach
-    CORS(app, supports_credentials=True)
+    # Apply CORS with proper configuration
+    CORS(app, 
+         supports_credentials=True,
+         origins=app.config.get('CORS_ORIGINS', ['http://localhost:3000']))
     
     # Import routes BEFORE registering blueprints
     # This loads all the route handlers onto the blueprints
     from . import routes
+    from . import test_routes
     from .auth import auth_bp
     from .routes.projects import projects_bp
     from .routes.review import review_bp
     from .routes.analytics import analytics_bp
+    from .routes.batch_upload import batch_upload_bp
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
@@ -70,6 +70,19 @@ def create_app(config=None):
     app.register_blueprint(projects_bp)  # projects_bp already has /api/projects prefix
     app.register_blueprint(review_bp)  # review_bp already has /api/review prefix
     app.register_blueprint(analytics_bp)  # analytics_bp already has /api/analytics prefix
+    app.register_blueprint(batch_upload_bp)  # batch_upload_bp already has /api/batch prefix
+    
+    # Register simple routes directly to bypass registration issues
+    from .simple_upload import register_upload_route
+    from .simple_videos import register_videos_route
+    from .simple_static import register_static_routes
+    from .simple_normalize_real import register_real_normalize_routes
+    from .video_stream import register_video_stream_routes
+    register_upload_route(app)
+    register_videos_route(app)
+    register_static_routes(app)
+    register_real_normalize_routes(app)
+    register_video_stream_routes(app)
     
     # Add a before_request handler to log all requests
     @app.before_request
@@ -85,7 +98,7 @@ def create_app(config=None):
         if request.method == 'OPTIONS':
             response = make_response()
             origin = request.headers.get('Origin')
-            if origin in ['http://localhost:3000', 'http://127.0.0.1:3000']:
+            if origin in app.config.get('CORS_ORIGINS', []):
                 response.headers['Access-Control-Allow-Origin'] = origin
                 response.headers['Access-Control-Allow-Credentials'] = 'true'
                 response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
@@ -96,7 +109,7 @@ def create_app(config=None):
     @app.after_request
     def after_request(response):
         origin = request.headers.get('Origin')
-        if origin in ['http://localhost:3000', 'http://127.0.0.1:3000']:
+        if origin in app.config.get('CORS_ORIGINS', []):
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Access-Control-Allow-Credentials'] = 'true'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
@@ -117,13 +130,13 @@ def create_app(config=None):
             if not admin_user:
                 print(">>> Creating default admin user...")
                 admin_user = User(
-                    username='admin',
-                    email='admin@vthelmetlab.edu',
+                    username=app.config['ADMIN_USERNAME'],
+                    email=app.config['ADMIN_EMAIL'],
                     full_name='System Administrator',
                     role=UserRole.ADMIN,
                     is_active=True
                 )
-                admin_user.set_password('admin123')  # Change this in production!
+                admin_user.set_password(app.config['ADMIN_PASSWORD'])
                 
                 db.session.add(admin_user)
                 db.session.commit()

@@ -1,0 +1,106 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: falldetection-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-falldetection}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-securepassword}
+      POSTGRES_DB: ${DB_NAME:-falldetection_prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-falldetection}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: falldetection-backend
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - FLASK_ENV=production
+      - DB_HOST=postgres
+    volumes:
+      - ./uploads:/app/uploads
+      - ./backups:/app/backups
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python migrate.py upgrade &&
+        python run.py
+      "
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: falldetection-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
+
+  # Redis (optional, for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: falldetection-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Backup Service
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: falldetection-backup
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - FLASK_ENV=production
+      - DB_HOST=postgres
+    volumes:
+      - ./uploads:/app/uploads:ro
+      - ./backups:/app/backups
+    depends_on:
+      - postgres
+    command: >
+      sh -c "
+        while true; do
+          python backup_database.py
+          sleep 86400
+        done
+      "
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: falldetection-network

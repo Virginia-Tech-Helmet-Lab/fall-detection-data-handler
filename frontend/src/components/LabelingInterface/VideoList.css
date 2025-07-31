@@ -1,12 +1,29 @@
 /* VideoList.css */
 .video-list {
     padding: 10px;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: rgba(0, 255, 0, 0.1); /* Debug: light green background */
+    border: 2px solid green; /* Debug: green border */
+    box-sizing: border-box;
+    flex: 1 1 auto;
 }
 
 .video-items {
     list-style: none;
     padding: 0;
     margin: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
+    background-color: rgba(255, 0, 0, 0.1); /* Debug: light red background */
+    border: 2px solid red; /* Debug: red border */
 }
 
 .video-item {
@@ -64,6 +81,8 @@
     margin-bottom: 15px;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--vt-border-light);
+    flex-shrink: 0;
+    flex-grow: 0;
 }
 
 .video-list-header h3 {
@@ -85,6 +104,8 @@
     gap: 5px;
     margin-bottom: 15px;
     border-bottom: 2px solid var(--vt-border-light);
+    flex-shrink: 0;
+    flex-grow: 0;
 }
 
 .filter-tab {
@@ -209,6 +230,8 @@
     text-align: center;
     padding: 10px;
     border-top: 1px solid var(--vt-border-light);
-    margin-top: 10px;
+    margin-top: auto; /* Push to bottom */
     color: var(--vt-text-tertiary);
+    flex-shrink: 0;
+    flex-grow: 0;
 }

@@ -1,19 +1,28 @@
 /* LabelingInterface.css */
 .labeling-container {
     display: flex;
-    min-height: 100vh;
+    height: calc(100vh - 60px); /* Adjust for DockingBar height */
     max-width: 100%;
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
+    overflow: hidden;
+    position: relative;
 }
 
-.video-list-panel {
+.labeling-container .video-list-panel {
     flex: 0.8;
-    padding: 10px;
+    padding: 0 !important; /* Remove padding to see full size */
     border-right: 1px solid #e0e0e0;
     max-width: 250px;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background-color: rgba(0, 0, 255, 0.1) !important; /* Debug: blue background */
+    border: 2px solid blue !important; /* Debug: blue border */
+    box-shadow: none !important; /* Remove shadow */
+    border-radius: 0 !important; /* Remove border radius */
 }
 
 .video-display-panel {

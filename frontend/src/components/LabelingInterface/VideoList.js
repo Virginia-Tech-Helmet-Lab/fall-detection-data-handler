@@ -7,7 +7,9 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState('assigned'); // 'all', 'assigned', 'unassigned'
+    // Set default filter based on user role
+    const isAdminOrReviewer = userRole && (userRole.toUpperCase() === 'ADMIN' || userRole.toUpperCase() === 'REVIEWER');
+    const [filter, setFilter] = useState(isAdminOrReviewer ? 'all' : 'assigned');
 
     useEffect(() => {
         const fetchVideos = async () => {
@@ -24,7 +26,9 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
                 });
-                setVideos(response.data);
+                // Handle the response format { videos: [...], count: n }
+                const videoList = response.data.videos || response.data;
+                setVideos(Array.isArray(videoList) ? videoList : []);
                 setError(null);
             } catch (error) {
                 console.error("Error fetching videos:", error);
@@ -37,7 +41,7 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
     }, [userId, projectId, filter]);
 
     return (
-        <div className="video-list">
+        <div className="video-list" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <div className="video-list-header">
                 <h3>Video Queue</h3>
                 {projectId && (
@@ -104,9 +108,9 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
                                     {video.resolution}, {video.framerate} fps
                                     {video.duration && `, ${parseFloat(video.duration).toFixed(1)}s`}
                                 </div>
-                                {video.assigned_to_name && (
+                                {video.assignee_name && (
                                     <div className="assignment-info">
-                                        <FaUser /> {video.assigned_to_name}
+                                        <FaUser /> {video.assignee_name}
                                     </div>
                                 )}
                             </div>

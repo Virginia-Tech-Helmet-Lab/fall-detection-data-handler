@@ -94,4 +94,8 @@
 /* Main content adjustments for authenticated users */
 .main-content {
   margin-top: 0; /* Remove any top margin since we have the docking bar */
+  height: calc(100vh - 60px); /* Full height minus docking bar */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }

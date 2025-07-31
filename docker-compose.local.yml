@@ -1,0 +1,93 @@
+services:
+  # PostgreSQL Database - for data persistence
+  postgres:
+    image: postgres:15-alpine
+    container_name: falldetection-db-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: falldetection
+      POSTGRES_PASSWORD: localpassword123
+      POSTGRES_DB: falldetection_local
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U falldetection"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: falldetection-backend-local
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      - FLASK_ENV=production
+      - DB_HOST=postgres
+    volumes:
+      - ./uploads:/app/uploads
+      - ./backups:/app/backups
+      - ./backend:/app  # Mount source for easy updates
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend - Development mode for easy updates
+  frontend:
+    image: node:18-alpine
+    container_name: falldetection-frontend-local
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Prevent overwriting node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - backend
+
+  # Automated Backup Service
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: falldetection-backup-local
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      - FLASK_ENV=production
+      - DB_HOST=postgres
+    volumes:
+      - ./uploads:/app/uploads:ro
+      - ./backups:/app/backups
+    depends_on:
+      - postgres
+    command: >
+      sh -c "
+        while true; do
+          echo 'Running backup at:' $$(date)
+          python backup_database.py
+          echo 'Next backup in 24 hours'
+          sleep 86400
+        done
+      "
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: falldetection-local-network
