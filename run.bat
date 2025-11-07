@@ -1,82 +1,75 @@
 @echo off
-setlocal enabledelayedexpansion
-
 echo =========================================
-echo Fall Detection Data Handler - Clean Setup
+echo Fall Detection Data Handler
 echo =========================================
 echo.
 
 :: Get script directory
-set "SCRIPT_DIR=%~dp0"
-set "BACKEND_DIR=%SCRIPT_DIR%backend"
-set "FRONTEND_DIR=%SCRIPT_DIR%frontend"
+set "BACKEND_DIR=%~dp0backend"
+set "FRONTEND_DIR=%~dp0frontend"
 set "VENV_DIR=%BACKEND_DIR%\venv"
 
-:: Check prerequisites
-echo [1/5] Checking prerequisites...
+:: Check Python
+echo Checking Python...
+python --version
+if errorlevel 1 (
+    echo ERROR: Python not found!
+    pause
+    exit /b 1
+)
 echo.
 
-:: Check Python
-python --version >nul 2>&1
+:: Check Node
+echo Checking Node.js...
+node --version
 if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8+ from https://www.python.org/
+    echo ERROR: Node.js not found!
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('python --version') do set PYTHON_VERSION=%%i
-echo [OK] Python found: !PYTHON_VERSION!
-
-:: Check Node.js
-node --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Node.js is not installed or not in PATH
-    echo Please install Node.js from https://nodejs.org/
-    pause
-    exit /b 1
-)
-for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
-echo [OK] Node.js found: !NODE_VERSION!
+echo.
 
 :: Check npm
-npm --version >nul 2>&1
+echo Checking npm...
+npm --version
 if errorlevel 1 (
-    echo ERROR: npm is not installed
+    echo ERROR: npm not found!
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('npm --version') do set NPM_VERSION=%%i
-echo [OK] npm found: !NPM_VERSION!
+echo.
 
-:: Check FFmpeg (optional)
-ffmpeg -version >nul 2>&1
-if errorlevel 1 (
-    echo WARNING: FFmpeg is not installed
-    echo Download from: https://ffmpeg.org/download.html
-) else (
-    echo [OK] FFmpeg found
-)
+echo [OK] Prerequisites found!
+echo.
 
 :: Setup backend
-echo.
-echo [2/5] Setting up backend...
+echo =========================================
+echo Setting up backend...
+echo =========================================
 echo.
 
 if not exist "%VENV_DIR%" (
-    echo Creating Python virtual environment...
+    echo Creating virtual environment...
     python -m venv "%VENV_DIR%"
     if errorlevel 1 (
-        echo ERROR: Failed to create virtual environment
+        echo ERROR: Failed to create venv
         pause
         exit /b 1
     )
-    echo [OK] Virtual environment created
+    echo [OK] Created venv
+    echo.
 )
 
 echo Activating virtual environment...
 call "%VENV_DIR%\Scripts\activate.bat"
+if errorlevel 1 (
+    echo ERROR: Failed to activate venv
+    pause
+    exit /b 1
+)
+echo.
 
-if not exist "%VENV_DIR%\.dependencies_installed" (
+if not exist "%VENV_DIR%\.deps_installed" (
     echo Installing Python dependencies...
     pip install -r "%BACKEND_DIR%\requirements.txt"
     if errorlevel 1 (
@@ -84,21 +77,25 @@ if not exist "%VENV_DIR%\.dependencies_installed" (
         pause
         exit /b 1
     )
-    echo. > "%VENV_DIR%\.dependencies_installed"
-    echo [OK] Python dependencies installed
+    echo installed > "%VENV_DIR%\.deps_installed"
+    echo [OK] Dependencies installed
+    echo.
 ) else (
     echo [OK] Python dependencies already installed
+    echo.
 )
 
 :: Setup frontend
-echo.
-echo [3/5] Setting up frontend...
+echo =========================================
+echo Setting up frontend...
+echo =========================================
 echo.
 
 cd /d "%FRONTEND_DIR%"
 
 if not exist "%FRONTEND_DIR%\node_modules" (
     echo Installing npm dependencies...
+    echo This may take a few minutes...
     call npm install
     if errorlevel 1 (
         echo ERROR: Failed to install npm dependencies
@@ -106,65 +103,41 @@ if not exist "%FRONTEND_DIR%\node_modules" (
         exit /b 1
     )
     echo [OK] npm dependencies installed
+    echo.
 ) else (
     echo [OK] npm dependencies already installed
+    echo.
 )
 
-:: Start backend
-echo.
-echo [4/5] Starting backend server...
+:: Start servers
+echo =========================================
+echo Starting servers...
+echo =========================================
 echo.
 
 cd /d "%BACKEND_DIR%"
-call "%VENV_DIR%\Scripts\activate.bat"
-
-:: Start backend in new window
+echo Starting backend server...
 start "Backend Server" cmd /k "call "%VENV_DIR%\Scripts\activate.bat" && python run.py"
-
 echo [OK] Backend started in new window
-echo      Backend running at: http://localhost:5000
-echo.
-
-:: Wait for backend to be ready
-echo Waiting for backend to be ready...
-set RETRY_COUNT=0
-:wait_backend
-timeout /t 1 /nobreak >nul
-set /a RETRY_COUNT+=1
-curl -s http://localhost:5000 >nul 2>&1
-if errorlevel 1 (
-    if !RETRY_COUNT! LSS 30 goto wait_backend
-    echo WARNING: Backend may not be responding
-) else (
-    echo [OK] Backend is ready
-)
-
-:: Start frontend
-echo.
-echo [5/5] Starting frontend...
 echo.
 
 cd /d "%FRONTEND_DIR%"
-
-:: Start frontend in new window
+echo Starting frontend server...
 start "Frontend Server" cmd /k "set BROWSER=none && npm start"
-
 echo [OK] Frontend started in new window
-echo      Frontend running at: http://localhost:3000
 echo.
 
 :: Summary
 echo =========================================
-echo Services are running!
+echo Services Started!
 echo =========================================
+echo.
 echo Frontend: http://localhost:3000
 echo Backend:  http://localhost:5000
 echo.
-echo Default login credentials:
-echo   Admin:     admin / admin123
-echo   Annotator: annotator1 / test123
-echo   Reviewer:  reviewer1 / test123
+echo Default Login:
+echo   admin / admin123
 echo.
-echo Close the Backend and Frontend windows to stop services
+echo Close the server windows to stop
 echo.
 pause
