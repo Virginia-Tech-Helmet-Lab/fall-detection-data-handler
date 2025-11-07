@@ -17,7 +17,7 @@ def create_app(config=None):
     # File upload configuration
     app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
     app.config['THUMBNAIL_CACHE'] = os.path.join(app.config['UPLOAD_FOLDER'], 'thumbnails')
-    app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB max upload
     
     # Authentication configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -58,7 +58,14 @@ def create_app(config=None):
     
     # Import routes BEFORE registering blueprints
     # This loads all the route handlers onto the blueprints
-    from . import routes
+    print(">>> About to import api_routes module...")
+    try:
+        from . import api_routes  # Import the api_routes.py module
+        print(">>> Successfully imported api_routes module")
+    except Exception as e:
+        print(f">>> ERROR importing api_routes: {e}")
+        import traceback
+        traceback.print_exc()
     from .auth import auth_bp
     from .routes.projects import projects_bp
     from .routes.review import review_bp

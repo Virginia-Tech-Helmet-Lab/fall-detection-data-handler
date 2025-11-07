@@ -70,7 +70,7 @@ def extract_metadata(video_path):
             video_path
         ]
         
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, universal_newlines=True, timeout=10)
         
         # Parse the output
         metadata = {}
@@ -157,6 +157,10 @@ def ensure_browser_compatible(filename):
     import shutil
     import logging
     
+    # Process the video normally
+    # logging.info(f"Skipping video conversion for testing: {filename}")
+    # return filename
+    
     # Check if FFmpeg is available
     if not shutil.which('ffmpeg'):
         logging.warning("FFmpeg not found. Video conversion skipped. Install FFmpeg for better compatibility.")
@@ -188,7 +192,8 @@ def ensure_browser_compatible(filename):
         pass
     
     # Create a browser-compatible version
-    compatible_filename = f"web_{filename.split('.')[-2]}.mp4"
+    base_name = os.path.splitext(filename)[0]
+    compatible_filename = f"web_{base_name}.mp4"
     output_path = os.path.join(upload_folder, compatible_filename)
     
     try:
@@ -200,12 +205,22 @@ def ensure_browser_compatible(filename):
             '-strict', 'experimental',
             '-movflags', 'faststart',  # Optimize for web streaming
             '-y',               # Overwrite if exists
+            '-loglevel', 'error',  # Only show errors to prevent buffer overflow
             output_path
         ]
-        subprocess.run(cmd, check=True, capture_output=True)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=60)
+        logging.info(f"Successfully created browser-compatible version: {compatible_filename}")
         return compatible_filename
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        logging.error(f"Error creating browser-compatible version: {e.stderr.decode()}")
+    except subprocess.TimeoutExpired:
+        logging.error(f"FFmpeg timeout after 60 seconds converting {filename}")
+        # Return original filename if conversion times out
+        return filename
+    except subprocess.CalledProcessError as e:
+        logging.error(f"FFmpeg error creating browser-compatible version: {e.stderr}")
+        # Return original filename if conversion fails
+        return filename
+    except FileNotFoundError as e:
+        logging.error(f"FFmpeg not found: {str(e)}")
         # Return original filename if conversion fails
         return filename
 
