@@ -1,4 +1,49 @@
 /* AnnotationPanel.css */
+
+.annotator-name-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #861F41 0%, #5e1630 100%);
+    border-radius: 6px;
+    border-bottom: 3px solid #E5751F;
+}
+
+.annotator-name-section label {
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.annotator-name-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.annotator-name-input::placeholder {
+    color: rgba(255,255,255,0.5);
+}
+
+.annotator-name-input:focus {
+    outline: none;
+    border-color: #E5751F;
+    background: rgba(255,255,255,0.25);
+}
+
+.annotation-signed {
+    font-size: 0.75rem;
+    color: #75787B;
+    font-style: italic;
+}
+
 .annotation-panel-container {
     padding: 15px;
     background-color: var(--vt-bg-secondary);

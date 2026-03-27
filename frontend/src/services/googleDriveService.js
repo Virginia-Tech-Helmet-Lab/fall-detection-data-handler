@@ -2,8 +2,8 @@
 
 class GoogleDriveService {
     constructor() {
-        this.API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
-        this.CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+        this.API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+        this.CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         this.SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
         this.tokenClient = null;
         this.isApiLoaded = false;

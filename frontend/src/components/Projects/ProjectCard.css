@@ -33,30 +33,63 @@
     line-height: 1.3;
 }
 
-.project-actions {
-    display: flex;
-    gap: 8px;
+.project-menu-wrapper {
+    position: relative;
 }
 
-.project-settings-btn,
-.project-assign-btn {
+.project-menu-btn {
     background: none;
     border: none;
-    color: #666;
-    font-size: 1.2rem;
+    color: #999;
+    font-size: 1rem;
     cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
-.project-settings-btn:hover {
+.project-menu-btn:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.project-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e9ecef;
+    z-index: 100;
+    min-width: 150px;
+    overflow: hidden;
+}
+
+.project-menu-dropdown button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #333;
+    transition: background 0.15s;
+}
+
+.project-menu-dropdown button:hover {
     background: #f8f9fa;
-    color: #660000;
 }
 
-.project-assign-btn:hover {
-    background: #e3f2fd;
+.project-menu-dropdown button.danger {
+    color: #dc3545;
+}
+
+.project-menu-dropdown button.danger:hover {
+    background: #fff5f5;
     color: #1976d2;
 }
 
