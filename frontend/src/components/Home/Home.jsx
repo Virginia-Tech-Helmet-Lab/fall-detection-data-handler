@@ -43,7 +43,7 @@ const Home = () => {
             id: 'import',
             name: 'Import Data',
             icon: <FaUpload />,
-            description: 'Upload videos from your computer, Dropbox, Google Drive, or URLs',
+            description: 'Import videos from the Data Catalog into your project',
             route: '/import',
             color: '#660000'
         },
@@ -236,7 +236,7 @@ const Home = () => {
                         <h3>1. Import Your Videos</h3>
                         <ul>
                             <li>Click on "Import Data" to begin</li>
-                            <li>Upload videos from your computer, cloud storage, or paste URLs</li>
+                            <li>Browse and import videos from the centralized Data Catalog</li>
                             <li>Supported formats: MP4, AVI, MOV, WMV</li>
                             <li>Videos will be automatically processed and thumbnails generated</li>
                         </ul>

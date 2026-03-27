@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     upload_folder: str = os.path.join(os.getcwd(), "uploads")
     frontend_dist: str = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
     max_upload_size: int = 10 * 1024 * 1024 * 1024  # 10GB
+    catalog_db_path: str = "/projects/helmetlab1/Data-Catalog/catalog.db"
+    catalog_data_root: str = "/projects/helmetlab1/Data-Catalog/data"
 
     model_config = {"env_prefix": "LABEL_"}
 
@@ -18,6 +20,10 @@ class Settings(BaseSettings):
     @property
     def preview_dir(self) -> str:
         return os.path.join(self.upload_folder, "preview")
+
+    @property
+    def transcode_cache(self) -> str:
+        return os.path.join(self.upload_folder, "transcoded")
 
 
 settings = Settings()

@@ -931,6 +931,69 @@ for batch in client.stream_data(split='train', batch_size=16):
         </div>
     );
 
+    const [publishResult, setPublishResult] = useState(null);
+    const [publishing, setPublishing] = useState(false);
+
+    const renderCatalogPublish = () => (
+        <div className="catalog-publish-section">
+            <h3><FaDatabase /> Publish Annotations to Data Catalog</h3>
+            <p className="publish-description">
+                Save your annotations as a versioned JSON file in the Data Catalog and register them
+                for use by other projects. Requires the current project to be linked to a catalog dataset.
+            </p>
+
+            <div className="publish-actions">
+                <button
+                    className="publish-button"
+                    onClick={async () => {
+                        setPublishing(true);
+                        setPublishResult(null);
+                        try {
+                            // Use currentProject from context or get from the first available project
+                            const projectsRes = await apiClient.get('/api/projects');
+                            const projects = projectsRes.data.projects || [];
+                            const catalogProject = projects.find(p => p.catalog_dataset_id);
+
+                            if (!catalogProject) {
+                                setPublishResult({ error: 'No project is linked to a catalog dataset. Import from the Data Catalog first.' });
+                                return;
+                            }
+
+                            const response = await apiClient.post(`/api/catalog/publish/${catalogProject.project_id}`);
+                            setPublishResult(response.data);
+                        } catch (err) {
+                            setPublishResult({ error: err.response?.data?.detail || err.message });
+                        } finally {
+                            setPublishing(false);
+                        }
+                    }}
+                    disabled={publishing}
+                >
+                    {publishing ? 'Publishing...' : 'Publish to Catalog'}
+                </button>
+            </div>
+
+            {publishResult && !publishResult.error && (
+                <div className="publish-success">
+                    <FaCheckCircle className="success-icon" />
+                    <div>
+                        <strong>Published successfully!</strong>
+                        <p>Version: {publishResult.version}</p>
+                        <p>Annotations: {publishResult.annotation_count} ({publishResult.temporal_count} temporal, {publishResult.bbox_count} bbox)</p>
+                        <p>Videos: {publishResult.video_count}</p>
+                        <p className="publish-path">Saved to: <code>{publishResult.path}</code></p>
+                    </div>
+                </div>
+            )}
+
+            {publishResult?.error && (
+                <div className="publish-error">
+                    <p>{publishResult.error}</p>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="data-export">
             <h2>Export Annotation Data</h2>
@@ -991,11 +1054,17 @@ for batch in client.stream_data(split='train', batch_size=16):
                         >
                             <FaRobot /> ML Pipeline
                         </button>
-                        <button 
+                        <button
                             className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
                             onClick={() => setActiveTab('history')}
                         >
                             <FaHistory /> Export History
+                        </button>
+                        <button
+                            className={`tab-button ${activeTab === 'catalog' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('catalog')}
+                        >
+                            <FaDatabase /> Publish to Catalog
                         </button>
                     </div>
 
@@ -1005,6 +1074,7 @@ for batch in client.stream_data(split='train', batch_size=16):
                         {activeTab === 'advanced' && renderAdvancedOptions()}
                         {activeTab === 'ml' && renderMLPipeline()}
                         {activeTab === 'history' && renderExportHistory()}
+                        {activeTab === 'catalog' && renderCatalogPublish()}
                     </div>
 
                     {/* Export Actions */}

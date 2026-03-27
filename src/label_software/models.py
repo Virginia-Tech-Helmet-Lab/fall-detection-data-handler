@@ -29,6 +29,10 @@ class Project(Base):
     completed_videos = mapped_column(Integer, default=0)
     last_activity = mapped_column(DateTime, default=datetime.utcnow)
 
+    # Catalog integration
+    catalog_dataset_id = mapped_column(Integer, nullable=True)
+    catalog_dataset_name = mapped_column(String(200), nullable=True)
+
     videos = relationship('Video', back_populates='project')
 
     def get_progress_percentage(self):
@@ -46,6 +50,8 @@ class Project(Base):
             'status': self.status.value if isinstance(self.status, ProjectStatus) else self.status,
             'quality_threshold': self.quality_threshold,
             'last_activity': self.last_activity.isoformat() if self.last_activity else None,
+            'catalog_dataset_id': self.catalog_dataset_id,
+            'catalog_dataset_name': self.catalog_dataset_name,
         }
         if include_stats:
             data.update({
@@ -74,6 +80,11 @@ class Video(Base):
 
     project_id = mapped_column(Integer, ForeignKey('projects.project_id'))
     project = relationship('Project', back_populates='videos')
+
+    # Catalog integration
+    source_type = mapped_column(String(20), default='upload', nullable=False)
+    catalog_path = mapped_column(Text, nullable=True)
+    catalog_dataset_id = mapped_column(Integer, nullable=True)
 
 
 class TemporalAnnotation(Base):

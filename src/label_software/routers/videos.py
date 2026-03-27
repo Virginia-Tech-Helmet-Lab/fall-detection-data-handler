@@ -83,18 +83,31 @@ def upload_video(
 
 
 @router.get("/videos")
-def list_videos(project_id: int | None = None, db: Session = Depends(get_db)):
+def list_videos(
+    project_id: int | None = None,
+    page: int = 1,
+    per_page: int = 50,
+    db: Session = Depends(get_db),
+):
     query = db.query(Video)
     if project_id:
         query = query.filter_by(project_id=project_id)
 
-    videos = query.all()
-    return [{
-        'video_id': v.video_id, 'filename': v.filename,
-        'resolution': v.resolution, 'framerate': v.framerate,
-        'duration': v.duration, 'status': v.status,
-        'is_completed': v.is_completed, 'project_id': v.project_id,
-    } for v in videos]
+    total = query.count()
+    videos = query.offset((page - 1) * per_page).limit(per_page).all()
+    return {
+        'videos': [{
+            'video_id': v.video_id, 'filename': v.filename,
+            'resolution': v.resolution, 'framerate': v.framerate,
+            'duration': v.duration, 'status': v.status,
+            'is_completed': v.is_completed, 'project_id': v.project_id,
+            'source_type': v.source_type, 'catalog_path': v.catalog_path,
+        } for v in videos],
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total + per_page - 1) // per_page,
+    }
 
 
 @router.post("/videos/{video_id}/complete")
@@ -106,6 +119,56 @@ def mark_video_complete(video_id: int, db: Session = Depends(get_db)):
     video.status = 'completed'
     db.commit()
     return {'message': 'Video marked as complete', 'status': 'completed'}
+
+
+@router.get("/video-file/{video_id}")
+def serve_video_file(video_id: int, db: Session = Depends(get_db)):
+    """Unified video serving -- resolves path from DB, handles catalog + upload videos."""
+    video = db.get(Video, video_id)
+    if not video:
+        raise HTTPException(404, detail="Video not found")
+
+    if video.source_type == "catalog" and video.catalog_path:
+        video_path = video.catalog_path
+    else:
+        video_path = os.path.join(settings.upload_folder, video.filename)
+
+    if not os.path.isfile(video_path):
+        raise HTTPException(404, detail=f"Video file not found: {video.filename}")
+
+    # Transcode if needed (AVI, MKV, etc.)
+    from ..services.transcode import get_playable_path
+    playable_path = get_playable_path(video_path)
+
+    return FileResponse(playable_path, media_type="video/mp4")
+
+
+@router.get("/video-thumbnail/{video_id}/{frame_number}")
+def get_video_thumbnail(video_id: int, frame_number: int, db: Session = Depends(get_db)):
+    """Thumbnail extraction using video_id (works for both catalog and upload videos)."""
+    video = db.get(Video, video_id)
+    if not video:
+        raise HTTPException(404, detail="Video not found")
+
+    if video.source_type == "catalog" and video.catalog_path:
+        video_path = video.catalog_path
+    else:
+        video_path = os.path.join(settings.upload_folder, video.filename)
+
+    if os.path.isfile(video_path):
+        thumbnail_path = extract_video_frame(
+            os.path.basename(video_path), frame_number,
+            os.path.dirname(video_path), settings.thumbnail_cache,
+        )
+        if thumbnail_path and os.path.exists(thumbnail_path):
+            return FileResponse(thumbnail_path, media_type="image/jpeg")
+
+    # Fallback
+    img = np.zeros((120, 160, 3), dtype=np.uint8)
+    img[:, :, 2] = 255
+    cv2.putText(img, "Not found", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    _, buffer = cv2.imencode('.jpg', img)
+    return Response(content=buffer.tobytes(), media_type="image/jpeg")
 
 
 @router.get("/static/{filename:path}")

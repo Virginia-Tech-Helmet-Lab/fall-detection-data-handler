@@ -199,7 +199,7 @@ const LabelingInterface = () => {
                 {selectedVideo ? (
                     <div className="video-player-container" style={{ position: 'relative' }}>
                         <VideoPlayer 
-                            videoUrl={`${basePath}/api/static/${selectedVideo.filename}`}
+                            videoUrl={`${basePath}/api/video-file/${selectedVideo.video_id}`}
                             onPositionChange={handlePositionChange}
                         />
                         <div style={{

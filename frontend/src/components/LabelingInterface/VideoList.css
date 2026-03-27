@@ -204,6 +204,36 @@
     font-size: 0.85rem;
 }
 
+/* Pagination */
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.6rem;
+    border-top: 1px solid var(--vt-border-light, #eee);
+}
+
+.page-btn {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 0.8rem;
+    color: #666;
+}
+
 /* Queue Stats */
 .queue-stats {
     text-align: center;

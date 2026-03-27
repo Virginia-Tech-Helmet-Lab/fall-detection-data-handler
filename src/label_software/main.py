@@ -18,6 +18,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(settings.upload_folder, exist_ok=True)
     os.makedirs(settings.preview_dir, exist_ok=True)
     os.makedirs(settings.thumbnail_cache, exist_ok=True)
+    os.makedirs(settings.transcode_cache, exist_ok=True)
     os.makedirs(os.path.dirname(settings.database_url.replace("sqlite:///", "")), exist_ok=True)
     init_db(settings.database_url)
     yield
@@ -38,7 +39,7 @@ app.add_middleware(
 )
 
 # Register routers
-from .routers import videos, annotations, normalization, projects, analytics, export, imports, review, images, progress
+from .routers import videos, annotations, normalization, projects, analytics, export, review, images, progress, catalog
 
 app.include_router(videos.router, prefix="/api")
 app.include_router(annotations.router, prefix="/api")
@@ -46,10 +47,10 @@ app.include_router(normalization.router, prefix="/api")
 app.include_router(projects.router, prefix="/api/projects")
 app.include_router(analytics.router, prefix="/api/analytics")
 app.include_router(export.router, prefix="/api")
-app.include_router(imports.router, prefix="/api")
 app.include_router(review.router, prefix="/api")
 app.include_router(images.router, prefix="/api")
 app.include_router(progress.router, prefix="/api")
+app.include_router(catalog.router, prefix="/api")
 
 # Serve frontend in production (if built)
 frontend_dist = os.path.normpath(settings.frontend_dist)

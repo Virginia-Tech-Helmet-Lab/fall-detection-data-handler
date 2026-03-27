@@ -1,39 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
 import './VideoList.css';
-import { FaVideo, FaUser, FaFolder, FaExclamationTriangle } from 'react-icons/fa';
+import { FaVideo, FaFolder, FaChevronLeft, FaChevronRight, FaDatabase } from 'react-icons/fa';
 
-const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
+const VideoList = ({ onVideoSelect, projectId }) => {
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState('assigned'); // 'all', 'assigned', 'unassigned'
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
+    const perPage = 50;
 
     useEffect(() => {
         const fetchVideos = async () => {
             try {
                 setLoading(true);
-                // Updated API endpoint to include filters
                 const params = new URLSearchParams();
                 if (projectId) params.append('project_id', projectId);
-                if (userId && filter === 'assigned') params.append('assigned_to', userId);
-                if (filter === 'unassigned') params.append('unassigned', 'true');
-                
-                const response = await apiClient.get(`/api/videos?${params}`, {
-                    headers: {
-                    }
-                });
-                setVideos(response.data);
+                params.append('page', page);
+                params.append('per_page', perPage);
+
+                const response = await apiClient.get(`/api/videos?${params}`);
+                setVideos(response.data.videos || []);
+                setTotal(response.data.total || 0);
+                setTotalPages(response.data.total_pages || 1);
                 setError(null);
-            } catch (error) {
-                console.error("Error fetching videos:", error);
-                setError("Failed to load videos. Please try again.");
+            } catch (err) {
+                console.error("Error fetching videos:", err);
+                setError("Failed to load videos.");
             } finally {
                 setLoading(false);
             }
         };
         fetchVideos();
-    }, [userId, projectId, filter]);
+    }, [projectId, page]);
 
     return (
         <div className="video-list">
@@ -45,69 +46,32 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
                     </div>
                 )}
             </div>
-            
-            {/* Filter tabs for admin/reviewer */}
-            {userRole && (userRole.toUpperCase() === 'ADMIN' || userRole.toUpperCase() === 'REVIEWER') && (
-                <div className="filter-tabs">
-                    <button 
-                        className={`filter-tab ${filter === 'assigned' ? 'active' : ''}`}
-                        onClick={() => setFilter('assigned')}
-                    >
-                        My Videos
-                    </button>
-                    <button 
-                        className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
-                        onClick={() => setFilter('all')}
-                    >
-                        All Videos
-                    </button>
-                    <button 
-                        className={`filter-tab ${filter === 'unassigned' ? 'active' : ''}`}
-                        onClick={() => setFilter('unassigned')}
-                    >
-                        Unassigned
-                    </button>
-                </div>
-            )}
-            
+
             {loading && <p className="loading">Loading videos...</p>}
             {error && <p className="error">{error}</p>}
-            
+
             {!loading && !error && videos.length === 0 && (
                 <div className="no-videos">
-                    {filter === 'assigned' ? (
-                        <>
-                            <FaExclamationTriangle />
-                            <p>No videos assigned to you.</p>
-                            <small>Contact your project admin for video assignments.</small>
-                        </>
-                    ) : (
-                        <>
-                            <FaVideo />
-                            <p>No videos available.</p>
-                            <small>Please upload and normalize videos first.</small>
-                        </>
-                    )}
+                    <FaVideo />
+                    <p>No videos available.</p>
+                    <small>Import videos from the Data Catalog or upload files.</small>
                 </div>
             )}
-            
+
             <ul className="video-items">
                 {videos.map(video => (
                     <li key={video.video_id} className={`video-item ${video.status}`}>
                         <button onClick={() => onVideoSelect(video)}>
                             <div className="video-info">
                                 <div className="video-name">
-                                    <FaVideo /> {video.filename}
+                                    {video.source_type === 'catalog' ? <FaDatabase /> : <FaVideo />}
+                                    {' '}{video.filename}
                                 </div>
                                 <div className="video-specs">
-                                    {video.resolution}, {video.framerate} fps
+                                    {video.resolution && `${video.resolution}, `}
+                                    {video.framerate && `${video.framerate} fps`}
                                     {video.duration && `, ${parseFloat(video.duration).toFixed(1)}s`}
                                 </div>
-                                {video.assigned_to_name && (
-                                    <div className="assignment-info">
-                                        <FaUser /> {video.assigned_to_name}
-                                    </div>
-                                )}
                             </div>
                             <div className="video-status">
                                 <span className={`status-badge ${video.status || 'pending'}`}>
@@ -118,9 +82,32 @@ const VideoList = ({ onVideoSelect, userId, projectId, userRole }) => {
                     </li>
                 ))}
             </ul>
-            
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="pagination-controls">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        className="page-btn"
+                    >
+                        <FaChevronLeft />
+                    </button>
+                    <span className="page-info">
+                        Page {page} of {totalPages} ({total} videos)
+                    </span>
+                    <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages}
+                        className="page-btn"
+                    >
+                        <FaChevronRight />
+                    </button>
+                </div>
+            )}
+
             <div className="queue-stats">
-                <small>Showing {videos.length} video{videos.length !== 1 ? 's' : ''}</small>
+                <small>Showing {videos.length} of {total} video{total !== 1 ? 's' : ''}</small>
             </div>
         </div>
     );

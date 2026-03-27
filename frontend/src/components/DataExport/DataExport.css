@@ -4,6 +4,90 @@
     margin: 0 auto;
 }
 
+/* Catalog Publish */
+.catalog-publish-section {
+    padding: 1.5rem;
+}
+
+.catalog-publish-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--vt-chicago-maroon, #861F41);
+    margin-bottom: 0.5rem;
+}
+
+.publish-description {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.publish-actions {
+    margin-bottom: 1rem;
+}
+
+.publish-button {
+    background: var(--vt-chicago-maroon, #861F41);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.7rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.publish-button:hover:not(:disabled) {
+    background: #5e1630;
+}
+
+.publish-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.publish-success {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: #e8f5e9;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.publish-success .success-icon {
+    color: #2e7d32;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    margin-top: 0.2rem;
+}
+
+.publish-success p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.publish-path code {
+    background: rgba(0,0,0,0.06);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
+
+.publish-error {
+    padding: 1rem;
+    background: #fce4ec;
+    color: #c62828;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.publish-error p {
+    margin: 0;
+}
+
 .data-export h2 {
     color: #500000;
     margin-bottom: 30px;

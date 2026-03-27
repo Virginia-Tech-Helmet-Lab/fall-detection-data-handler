@@ -66,13 +66,13 @@ class MLDatasetRequest(BaseModel):
     mlOptions: dict = {}
 
 
-class ImportUrlsRequest(BaseModel):
-    urls: list[str]
+class CatalogImportRequest(BaseModel):
+    dataset_id: int
+    project_id: int
+    video_paths: list[str] = []
+    import_all: bool = False
+    extract_metadata: bool = False
 
 
-class ImportDropboxRequest(BaseModel):
-    files: list[dict]
-
-
-class ImportGoogleDriveRequest(BaseModel):
-    fileIds: list[str]
+class CatalogPublishRequest(BaseModel):
+    version: str | None = None

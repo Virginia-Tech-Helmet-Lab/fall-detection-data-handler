@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaVideo, FaClock, FaEllipsisV, FaTrash, FaCog } from 'react-icons/fa';
+import { FaVideo, FaClock, FaEllipsisV, FaTrash, FaCog, FaDatabase } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useProject } from '../../contexts/ProjectContext';
@@ -86,6 +86,12 @@ const ProjectCard = ({ project, onClick }) => {
             <div className={`status-badge status-${project.status}`}>
                 {project.status.toUpperCase()}
             </div>
+
+            {project.catalog_dataset_name && (
+                <div className="catalog-link-badge">
+                    <FaDatabase /> Linked to: {project.catalog_dataset_name}
+                </div>
+            )}
 
             <p className="project-description">
                 {project.description || 'No description available'}
