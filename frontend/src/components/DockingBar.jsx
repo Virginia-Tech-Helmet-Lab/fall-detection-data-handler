@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaUpload, FaCog, FaTags, FaDownload, FaFolder, FaChartBar } from 'react-icons/fa';
+import { FaHome, FaUpload, FaTags, FaDownload, FaFolder, FaChartBar } from 'react-icons/fa';
 import './DockingBar.css';
 import vtLogo from '../assets/vt-logo.jpeg';
 import apiClient from '../api/client';
@@ -9,9 +9,8 @@ const tabs = [
   { name: 'Home', path: '/', icon: <FaHome />, stage: 'home' },
   { name: 'Projects', path: '/projects', icon: <FaFolder />, stage: 'projects' },
   { name: '1. Import Data', path: '/import', icon: <FaUpload />, stage: 'import' },
-  { name: '2. Normalize', path: '/normalize', icon: <FaCog />, stage: 'normalize' },
-  { name: '3. Label', path: '/labeling', icon: <FaTags />, stage: 'label' },
-  { name: '4. Export', path: '/export', icon: <FaDownload />, stage: 'export' },
+  { name: '2. Label', path: '/labeling', icon: <FaTags />, stage: 'label' },
+  { name: '3. Export', path: '/export', icon: <FaDownload />, stage: 'export' },
   { name: 'Analytics', path: '/analytics', icon: <FaChartBar />, stage: 'analytics' },
 ];
 
@@ -30,12 +29,11 @@ const DockingBar = () => {
       const stats = response.data;
       setStageCompletion({
         import: stats.totalVideos > 0,
-        normalize: stats.totalVideos > 0,
         label: stats.totalAnnotations > 0,
         export: false,
       });
     } catch {
-      setStageCompletion({ import: false, normalize: false, label: false, export: false });
+      setStageCompletion({ import: false, label: false, export: false });
     }
   };
 

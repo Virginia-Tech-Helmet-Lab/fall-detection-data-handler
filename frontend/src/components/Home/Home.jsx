@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUpload, FaCog, FaTags, FaCheckCircle, FaDownload, FaArrowRight, FaPlayCircle, FaBookOpen, FaFolder, FaExchangeAlt, FaEnvelope } from 'react-icons/fa';
+import { FaUpload, FaTags, FaCheckCircle, FaDownload, FaArrowRight, FaPlayCircle, FaBookOpen, FaFolder, FaExchangeAlt, FaEnvelope } from 'react-icons/fa';
 import './Home.css';
 import apiClient from '../../api/client';
 import { useProject } from '../../contexts/ProjectContext';
@@ -48,20 +48,12 @@ const Home = () => {
             color: '#660000'
         },
         {
-            id: 'normalize',
-            name: 'Normalize',
-            icon: <FaCog />,
-            description: 'Standardize video resolution, framerate, and quality settings',
-            route: '/normalize',
-            color: '#990000'
-        },
-        {
             id: 'label',
             name: 'Label',
             icon: <FaTags />,
             description: 'Annotate fall events and mark body positions with bounding boxes',
             route: '/labeling',
-            color: '#CC0000'
+            color: '#990000'
         },
         {
             id: 'review',
@@ -82,7 +74,7 @@ const Home = () => {
     ];
 
     const getStageStatus = (stageId) => {
-        const stageOrder = ['import', 'normalize', 'label', 'review', 'export'];
+        const stageOrder = ['import', 'label', 'review', 'export'];
         const currentIndex = stageOrder.indexOf(currentStage);
         const stageIndex = stageOrder.indexOf(stageId);
         
@@ -108,7 +100,7 @@ const Home = () => {
                     <h2>Welcome to the Fall Detection Annotation System</h2>
                     <p>
                         This tool helps researchers prepare video data for fall detection AI models. 
-                        Follow the 5-step workflow below to import, process, annotate, and export your data.
+                        Follow the workflow below to import, annotate, and export your data.
                     </p>
                     
                     {/* Project Selector */}
@@ -243,17 +235,7 @@ const Home = () => {
                     </div>
                     
                     <div className="instruction-card">
-                        <h3>2. Normalize Videos</h3>
-                        <ul>
-                            <li>Standardize video properties for consistent analysis</li>
-                            <li>Adjust resolution, framerate, and quality</li>
-                            <li>Apply brightness/contrast corrections if needed</li>
-                            <li>This step ensures all videos have similar characteristics</li>
-                        </ul>
-                    </div>
-                    
-                    <div className="instruction-card">
-                        <h3>3. Label Fall Events</h3>
+                        <h3>2. Label Fall Events</h3>
                         <ul>
                             <li>Mark the start and end times of fall events</li>
                             <li>Draw bounding boxes around body parts (head, torso, etc.)</li>
@@ -263,7 +245,7 @@ const Home = () => {
                     </div>
                     
                     <div className="instruction-card">
-                        <h3>4. Review Annotations</h3>
+                        <h3>3. Review Annotations</h3>
                         <ul>
                             <li>Verify all annotations are accurate</li>
                             <li>Check temporal alignment of fall events</li>
@@ -273,7 +255,7 @@ const Home = () => {
                     </div>
                     
                     <div className="instruction-card">
-                        <h3>5. Export Your Data</h3>
+                        <h3>4. Export Your Data</h3>
                         <ul>
                             <li>Choose from multiple export formats (JSON, CSV, COCO, YOLO)</li>
                             <li>Generate ML-ready datasets with train/val/test splits</li>

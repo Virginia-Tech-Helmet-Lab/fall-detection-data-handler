@@ -1,15 +1,6 @@
 from pydantic import BaseModel
 
 
-class NormalizeRequest(BaseModel):
-    video_id: int
-    settings: dict
-
-
-class NormalizeAllRequest(BaseModel):
-    settings: dict
-
-
 class AnnotationCreate(BaseModel):
     video_id: int
     start_time: float

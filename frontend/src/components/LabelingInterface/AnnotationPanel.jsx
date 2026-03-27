@@ -1,16 +1,22 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { basePath } from '../../api/client';
+import { useProject } from '../../contexts/ProjectContext';
 import './AnnotationPanel.css';
 
-const AnnotationPanel = forwardRef(({ 
-  videoId, 
-  currentFrame, 
-  currentTime, 
-  frameRate, 
+const DEFAULT_EVENT_TYPES = ['Fall'];
+const DEFAULT_BODY_PARTS = ['head', 'shoulder', 'elbow', 'wrist', 'hip', 'knee', 'ankle'];
+
+const AnnotationPanel = forwardRef(({
+  videoId,
+  currentFrame,
+  currentTime,
+  frameRate,
   duration,
   onBoundingBoxActivate,
   isBoundingBoxActive
 }, ref) => {
+  const { currentProject, updateProject } = useProject();
+
   // Annotator identity (persisted in localStorage)
   const [annotatorName, setAnnotatorName] = useState(
     () => localStorage.getItem('annotator_name') || ''
@@ -22,6 +28,14 @@ const AnnotationPanel = forwardRef(({
     localStorage.setItem('annotator_name', name);
   };
 
+  // Dynamic label types (loaded from project, fallback to defaults)
+  const [eventTypes, setEventTypes] = useState(DEFAULT_EVENT_TYPES);
+  const [bodyParts, setBodyParts] = useState(DEFAULT_BODY_PARTS);
+  const [showAddEventType, setShowAddEventType] = useState(false);
+  const [showAddBodyPart, setShowAddBodyPart] = useState(false);
+  const [newEventType, setNewEventType] = useState('');
+  const [newBodyPart, setNewBodyPart] = useState('');
+
   // States for temporal annotation
   const [temporalAnnotations, setTemporalAnnotations] = useState([]);
   const [bboxAnnotations, setBboxAnnotations] = useState([]);
@@ -30,21 +44,59 @@ const AnnotationPanel = forwardRef(({
   const [endTime, setEndTime] = useState(null);
   const [startFrame, setStartFrame] = useState(null);
   const [endFrame, setEndFrame] = useState(null);
-  const [customLabel, setCustomLabel] = useState('');
-  
+
   // States for bounding box annotation
   const [selectedBodyPart, setSelectedBodyPart] = useState('head');
-  
-  // Section visibility states
-  const [temporalSectionOpen, setTemporalSectionOpen] = useState(true);
-  const [boundingBoxSectionOpen, setBoundingBoxSectionOpen] = useState(true);
-  const [existingAnnotationsOpen, setExistingAnnotationsOpen] = useState(true);
-  
-  // Predefined body parts
-  const bodyParts = ['head', 'shoulder', 'elbow', 'wrist', 'hip', 'knee', 'ankle'];
-  
-  // Predefined event types for temporal annotations
-  const eventTypes = ['Fall'];
+
+  // Load label config from project
+  useEffect(() => {
+    if (currentProject?.annotation_schema) {
+      const schema = currentProject.annotation_schema;
+      if (schema.event_types && schema.event_types.length > 0) {
+        setEventTypes(schema.event_types);
+      }
+      if (schema.body_parts && schema.body_parts.length > 0) {
+        setBodyParts(schema.body_parts);
+        setSelectedBodyPart(schema.body_parts[0]);
+      }
+    }
+  }, [currentProject?.project_id]);
+
+  const persistSchema = async (updatedEventTypes, updatedBodyParts) => {
+    if (!currentProject?.project_id) return;
+    try {
+      await updateProject(currentProject.project_id, {
+        annotation_schema: {
+          event_types: updatedEventTypes,
+          body_parts: updatedBodyParts,
+        }
+      });
+    } catch (error) {
+      console.error('Error saving annotation schema:', error);
+    }
+  };
+
+  const handleAddEventType = () => {
+    const trimmed = newEventType.trim();
+    if (!trimmed) return;
+    if (eventTypes.includes(trimmed)) return;
+    const updated = [...eventTypes, trimmed];
+    setEventTypes(updated);
+    persistSchema(updated, bodyParts);
+    setNewEventType('');
+    setShowAddEventType(false);
+  };
+
+  const handleAddBodyPart = () => {
+    const trimmed = newBodyPart.trim().toLowerCase();
+    if (!trimmed) return;
+    if (bodyParts.includes(trimmed)) return;
+    const updated = [...bodyParts, trimmed];
+    setBodyParts(updated);
+    persistSchema(eventTypes, updated);
+    setNewBodyPart('');
+    setShowAddBodyPart(false);
+  };
 
   // Fetch annotations when video changes
   useEffect(() => {
@@ -54,14 +106,12 @@ const AnnotationPanel = forwardRef(({
     }
   }, [videoId]);
 
-  // Add a useEffect that refetches bounding box annotations when the component updates
+  // Poll for bbox updates when bbox mode is active
   useEffect(() => {
     if (videoId && isBoundingBoxActive) {
-      // Poll for new annotations when bounding box mode is active
       const interval = setInterval(() => {
         fetchBboxAnnotations();
-      }, 3000); // Check every 3 seconds
-      
+      }, 3000);
       return () => clearInterval(interval);
     }
   }, [videoId, isBoundingBoxActive]);
@@ -80,20 +130,11 @@ const AnnotationPanel = forwardRef(({
 
   const fetchBboxAnnotations = async () => {
     try {
-      console.log(`Fetching bbox annotations for video ${videoId}`);
       const response = await fetch(`${basePath}/api/bbox-annotations/${videoId}`);
-      
-      console.log("Response status:", response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log("Received bbox annotations:", data);
         setBboxAnnotations(data);
       } else {
-        console.error('Failed to fetch bounding box annotations:', 
-                     response.status, response.statusText);
-        
-        // If empty response is given, set an empty array
         setBboxAnnotations([]);
       }
     } catch (error) {
@@ -114,13 +155,6 @@ const AnnotationPanel = forwardRef(({
 
   const handleLabelChange = (e) => {
     setAnnotationLabel(e.target.value);
-    if (e.target.value !== 'Other') {
-      setCustomLabel('');
-    }
-  };
-
-  const handleCustomLabelChange = (e) => {
-    setCustomLabel(e.target.value);
   };
 
   const handleSaveTemporalAnnotation = async () => {
@@ -129,43 +163,28 @@ const AnnotationPanel = forwardRef(({
       return;
     }
 
-    // Use the custom label if "Other" is selected
-    const finalLabel = annotationLabel === 'Other' ? customLabel : annotationLabel;
-    
-    if (annotationLabel === 'Other' && !customLabel) {
-      alert('Please enter a custom label');
-      return;
-    }
-
     try {
       const response = await fetch(`${basePath}/api/annotations`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           video_id: videoId,
           start_time: startTime,
           end_time: endTime,
           start_frame: startFrame,
           end_frame: endFrame,
-          label: finalLabel,
+          label: annotationLabel,
           annotator_name: annotatorName || null,
         }),
       });
 
       if (response.ok) {
-        // Successfully saved, reset form and refresh the list
         setAnnotationLabel('');
         setStartTime(null);
         setEndTime(null);
         setStartFrame(null);
         setEndFrame(null);
-        
-        // Fetch updated annotations
         fetchTemporalAnnotations();
-        
-        alert('Annotation saved successfully!');
       } else {
         const errorData = await response.json();
         alert(`Failed to save annotation: ${errorData.error || 'Unknown error'}`);
@@ -177,17 +196,13 @@ const AnnotationPanel = forwardRef(({
   };
 
   const handleDeleteAnnotation = async (annotationId) => {
-    if (!window.confirm('Are you sure you want to delete this annotation?')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to delete this annotation?')) return;
 
     try {
       const response = await fetch(`${basePath}/api/annotations/${annotationId}`, {
         method: 'DELETE',
       });
-
       if (response.ok) {
-        // Refresh the list
         fetchTemporalAnnotations();
       } else {
         const errorData = await response.json();
@@ -195,37 +210,23 @@ const AnnotationPanel = forwardRef(({
       }
     } catch (error) {
       console.error('Error deleting annotation:', error);
-      alert('Error deleting annotation');
     }
   };
 
   const handleDeleteBbox = async (bboxId) => {
-    if (window.confirm('Are you sure you want to delete this bounding box?')) {
-      try {
-        console.log(`Attempting to delete bbox with ID ${bboxId}`);
-        
-        // Use the GET endpoint instead of DELETE to avoid CORS issues
-        const response = await fetch(`${basePath}/api/delete-bbox/${bboxId}`);
-        
-        if (response.ok) {
-          // Success - update the UI
-          setBboxAnnotations(prevBoxes => 
-            prevBoxes.filter(box => box.bbox_id !== bboxId)
-          );
-        } else {
-          console.error('Failed to delete bounding box:', 
-                       response.status, response.statusText);
-        }
-      } catch (error) {
-        console.error('Error deleting bounding box:', error);
+    if (!window.confirm('Are you sure you want to delete this bounding box?')) return;
+    try {
+      const response = await fetch(`${basePath}/api/delete-bbox/${bboxId}`);
+      if (response.ok) {
+        setBboxAnnotations(prev => prev.filter(box => box.bbox_id !== bboxId));
       }
+    } catch (error) {
+      console.error('Error deleting bounding box:', error);
     }
   };
 
   const handleBodyPartChange = (e) => {
     setSelectedBodyPart(e.target.value);
-    
-    // If bounding box mode is active, update it with the new label
     if (isBoundingBoxActive) {
       onBoundingBoxActivate(true, e.target.value);
     }
@@ -236,7 +237,6 @@ const AnnotationPanel = forwardRef(({
     onBoundingBoxActivate(newState, selectedBodyPart);
   };
 
-  // Make the fetchBboxAnnotations function available via ref
   useImperativeHandle(ref, () => ({
     fetchBboxAnnotations
   }));
@@ -267,103 +267,117 @@ const AnnotationPanel = forwardRef(({
           <span>{currentTime.toFixed(2)}s</span>
         </div>
       </div>
-      
+
       {/* Temporal Annotation Section */}
       <h3>Temporal Annotation</h3>
       <div className="form-group">
         <label>Label:</label>
-        <select 
-          value={annotationLabel} 
-          onChange={handleLabelChange}
-        >
-          <option value="">Select an event type</option>
-          {eventTypes.map(type => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
-      </div>
-      
-      {annotationLabel === 'Other' && (
-        <div className="form-group">
-          <label>Custom Label:</label>
-          <input 
-            type="text" 
-            value={customLabel} 
-            onChange={handleCustomLabelChange} 
-            placeholder="Enter custom label"
-          />
+        <div className="label-select-row">
+          <select value={annotationLabel} onChange={handleLabelChange}>
+            <option value="">Select an event type</option>
+            {eventTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+          <button
+            className="add-label-btn"
+            onClick={() => setShowAddEventType(!showAddEventType)}
+            title="Add custom event type"
+            type="button"
+          >+</button>
         </div>
-      )}
-      
+        {showAddEventType && (
+          <div className="add-label-form">
+            <input
+              type="text"
+              value={newEventType}
+              onChange={(e) => setNewEventType(e.target.value)}
+              placeholder="New event type"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddEventType()}
+            />
+            <button onClick={handleAddEventType} type="button">Add</button>
+          </div>
+        )}
+      </div>
+
       <div className="frame-marking-buttons">
-        <button 
-          className="mark-start-btn" 
-          onClick={handleSetStart}
-        >
+        <button className="mark-start-btn" onClick={handleSetStart}>
           Set Start {startFrame ? `(${startFrame})` : "(Not Set)"}
         </button>
-        
-        <button 
-          className="mark-end-btn" 
-          onClick={handleSetEnd}
-        >
+        <button className="mark-end-btn" onClick={handleSetEnd}>
           Set End {endFrame ? `(${endFrame})` : "(Not Set)"}
         </button>
       </div>
-      
+
       {startTime !== null && (
         <div className="frame-indicator start-frame">
           <span>Start Time:</span>
           <span>{startTime.toFixed(2)}s (Frame {startFrame})</span>
         </div>
       )}
-      
+
       {endTime !== null && (
         <div className="frame-indicator end-frame">
           <span>End Time:</span>
           <span>{endTime.toFixed(2)}s (Frame {endFrame})</span>
         </div>
       )}
-      
-      <button 
-        className="save-button" 
+
+      <button
+        className="save-button"
         onClick={handleSaveTemporalAnnotation}
         disabled={!annotationLabel || startTime === null || endTime === null}
       >
         Save Temporal Annotation
       </button>
-      
+
       {/* Bounding Box Annotation Section */}
       <h3>Bounding Box Annotation</h3>
       <div className="form-group">
         <label>Body Part:</label>
-        <select 
-          value={selectedBodyPart} 
-          onChange={handleBodyPartChange}
-        >
-          {bodyParts.map(part => (
-            <option key={part} value={part}>{part}</option>
-          ))}
-        </select>
+        <div className="label-select-row">
+          <select value={selectedBodyPart} onChange={handleBodyPartChange}>
+            {bodyParts.map(part => (
+              <option key={part} value={part}>{part}</option>
+            ))}
+          </select>
+          <button
+            className="add-label-btn"
+            onClick={() => setShowAddBodyPart(!showAddBodyPart)}
+            title="Add custom body part"
+            type="button"
+          >+</button>
+        </div>
+        {showAddBodyPart && (
+          <div className="add-label-form">
+            <input
+              type="text"
+              value={newBodyPart}
+              onChange={(e) => setNewBodyPart(e.target.value)}
+              placeholder="New body part"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddBodyPart()}
+            />
+            <button onClick={handleAddBodyPart} type="button">Add</button>
+          </div>
+        )}
       </div>
-      
-      <button 
-        className={`bbox-button ${isBoundingBoxActive ? 'active' : ''}`} 
+
+      <button
+        className={`bbox-button ${isBoundingBoxActive ? 'active' : ''}`}
         onClick={toggleBoundingBoxMode}
       >
         {isBoundingBoxActive ? 'Disable' : 'Enable'} Bounding Box Mode
       </button>
-      
+
       {isBoundingBoxActive && (
         <div className="bbox-instructions">
           <p>Click and drag on the video to create a bounding box for "{selectedBodyPart}"</p>
         </div>
       )}
-      
+
       {/* Existing Annotations Section */}
       <h3>Existing Annotations</h3>
-      
-      {/* Temporal Annotations List */}
+
       <h4>Temporal Annotations</h4>
       {temporalAnnotations.length > 0 ? (
         <ul className="annotation-list">
@@ -381,7 +395,7 @@ const AnnotationPanel = forwardRef(({
                   <span className="annotation-signed">by {anno.annotator_name}</span>
                 )}
               </div>
-              <button 
+              <button
                 onClick={() => handleDeleteAnnotation(anno.annotation_id)}
                 className="delete-button"
               >
@@ -393,8 +407,7 @@ const AnnotationPanel = forwardRef(({
       ) : (
         <p>No temporal annotations yet.</p>
       )}
-      
-      {/* Bounding Box Annotations List */}
+
       <h4>Bounding Box Annotations</h4>
       {bboxAnnotations.length > 0 ? (
         <ul className="annotation-list">
@@ -406,7 +419,7 @@ const AnnotationPanel = forwardRef(({
                 <span>Position: ({Math.round(bbox.x)}, {Math.round(bbox.y)})</span>
                 <span>Size: {Math.round(bbox.width)} x {Math.round(bbox.height)}</span>
               </div>
-              <button 
+              <button
                 onClick={() => handleDeleteBbox(bbox.bbox_id)}
                 className="delete-button"
               >

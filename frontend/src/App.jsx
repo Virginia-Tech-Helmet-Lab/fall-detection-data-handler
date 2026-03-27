@@ -14,7 +14,6 @@ import ProjectDashboard from './components/Projects/ProjectDashboard';
 import ProjectCreation from './components/Projects/ProjectCreation';
 import ProjectSettings from './components/Projects/ProjectSettings';
 import DataImport from './components/DataImport/DataImport';
-import NormalizationPanel from './components/Normalization/NormalizationPanel';
 import LabelingInterface from './components/LabelingInterface/LabelingInterface';
 import DataExport from './components/DataExport/DataExport';
 import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
@@ -31,7 +30,6 @@ function App() {
             <Route path="/projects/new" element={<ProjectCreation />} />
             <Route path="/projects/:projectId/settings" element={<ProjectSettings />} />
             <Route path="/import" element={<DataImport />} />
-            <Route path="/normalize" element={<NormalizationPanel />} />
             <Route path="/labeling" element={<LabelingInterface />} />
             <Route path="/export" element={<DataExport />} />
             <Route path="/analytics" element={<AnalyticsDashboard />} />

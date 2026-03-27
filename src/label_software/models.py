@@ -52,6 +52,7 @@ class Project(Base):
             'last_activity': self.last_activity.isoformat() if self.last_activity else None,
             'catalog_dataset_id': self.catalog_dataset_id,
             'catalog_dataset_name': self.catalog_dataset_name,
+            'annotation_schema': self.annotation_schema,
         }
         if include_stats:
             data.update({
