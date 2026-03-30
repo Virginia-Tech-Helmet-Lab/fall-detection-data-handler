@@ -138,6 +138,17 @@ def list_dataset_videos(dataset_id: int, page: int = 1, per_page: int = 50) -> d
     }
 
 
+def list_annotations(dataset_id: int) -> list[dict]:
+    """List published annotation sets for a dataset from the catalog."""
+    conn = _get_catalog_conn()
+    rows = conn.execute(
+        "SELECT * FROM annotations WHERE dataset_id = ? ORDER BY id DESC",
+        (dataset_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def get_primary_path(dataset_id: int) -> str | None:
     conn = _get_catalog_conn()
     row = conn.execute(

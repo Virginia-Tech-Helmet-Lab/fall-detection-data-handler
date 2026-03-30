@@ -33,6 +33,11 @@ def list_catalog_dataset_videos(dataset_id: int, page: int = 1, per_page: int = 
     return catalog_svc.list_dataset_videos(dataset_id, page=page, per_page=per_page)
 
 
+@router.get("/catalog/annotations/{dataset_id}")
+def list_catalog_annotations(dataset_id: int):
+    return catalog_svc.list_annotations(dataset_id)
+
+
 @router.post("/catalog/import")
 def import_from_catalog(req: CatalogImportRequest, db: Session = Depends(get_db)):
     # Validate project exists

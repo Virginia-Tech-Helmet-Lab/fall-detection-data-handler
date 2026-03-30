@@ -18,6 +18,9 @@ const BoundingBoxTool = ({
   const [displayedBoxes, setDisplayedBoxes] = useState([]);
   const canvasRef = useRef(null);
 
+  // Custom modal state (replaces window.confirm)
+  const [modal, setModal] = useState(null); // { type: 'save'|'delete', data, message }
+
   useEffect(() => {
     console.log("BoundingBoxTool props updated:", { isActive, selectedLabel, currentFrame });
   }, [isActive, selectedLabel, currentFrame]);
@@ -145,16 +148,12 @@ const BoundingBoxTool = ({
         video_id: videoId
       };
       
-      // Show confirmation before saving
-      if (window.confirm(`Save ${selectedLabel} bounding box at frame ${currentFrame}?\n\nClick Cancel to redraw.`)) {
-        console.log("Saving box:", normalizedBox);
-        
-        // Save to backend
-        saveBoundingBox(normalizedBox);
-      } else {
-        // User canceled, just clear the current box
-        setCurrentBox(null);
-      }
+      // Show themed confirmation modal
+      setModal({
+        type: 'save',
+        data: normalizedBox,
+        message: `Save "${selectedLabel}" bounding box at frame ${currentFrame}?`,
+      });
     } else {
       setCurrentBox(null);
     }
@@ -389,36 +388,67 @@ const BoundingBoxTool = ({
     console.log("Right-clicked on box:", clickedBox);
     
     if (clickedBox && clickedBox.bbox_id) {
-      console.log(`Will attempt to delete box with ID: ${clickedBox.bbox_id}`);
-      if (window.confirm(`Delete ${clickedBox.partLabel} bounding box?`)) {
-        console.log("User confirmed deletion");
-        // ONLY call deleteBox here
-        deleteBox(clickedBox.bbox_id);
-      } else {
-        console.log("User canceled deletion");
-      }
+      setModal({
+        type: 'delete',
+        data: clickedBox.bbox_id,
+        message: `Delete "${clickedBox.partLabel}" bounding box?`,
+      });
     } else {
       console.log("No box found at click position or missing bbox_id");
     }
   };
 
+  const handleModalConfirm = () => {
+    if (modal.type === 'save') {
+      saveBoundingBox(modal.data);
+    } else if (modal.type === 'delete') {
+      deleteBox(modal.data);
+    }
+    setModal(null);
+  };
+
+  const handleModalCancel = () => {
+    if (modal?.type === 'save') {
+      setCurrentBox(null);
+    }
+    setModal(null);
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: isActive ? 'auto' : 'none',
-        zIndex: 2
-      }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onContextMenu={handleContextMenu}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: isActive ? 'auto' : 'none',
+          zIndex: 2
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onContextMenu={handleContextMenu}
+      />
+      {modal && (
+        <div className="bbox-modal-overlay" style={{ zIndex: 100 }}>
+          <div className="bbox-modal">
+            <p>{modal.message}</p>
+            <div className="bbox-modal-actions">
+              <button className="bbox-modal-cancel" onClick={handleModalCancel}>Cancel</button>
+              <button
+                className={`bbox-modal-confirm ${modal.type === 'delete' ? 'danger' : ''}`}
+                onClick={handleModalConfirm}
+              >
+                {modal.type === 'save' ? 'Save' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

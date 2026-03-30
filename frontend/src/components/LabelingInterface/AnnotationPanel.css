@@ -1,5 +1,27 @@
 /* AnnotationPanel.css */
 
+.annotation-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.annotation-controls {
+    flex-shrink: 0;
+    overflow-y: auto;
+    max-height: 60%;
+}
+
+.existing-annotations {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border-top: 2px solid #e0e0e0;
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
 .annotator-name-section {
     display: flex;
     align-items: center;

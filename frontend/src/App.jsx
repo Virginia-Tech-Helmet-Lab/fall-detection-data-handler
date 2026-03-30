@@ -16,7 +16,6 @@ import ProjectSettings from './components/Projects/ProjectSettings';
 import DataImport from './components/DataImport/DataImport';
 import LabelingInterface from './components/LabelingInterface/LabelingInterface';
 import DataExport from './components/DataExport/DataExport';
-import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
 
 function App() {
   return (
@@ -32,7 +31,6 @@ function App() {
             <Route path="/import" element={<DataImport />} />
             <Route path="/labeling" element={<LabelingInterface />} />
             <Route path="/export" element={<DataExport />} />
-            <Route path="/analytics" element={<AnalyticsDashboard />} />
           </Routes>
         </div>
       </Router>

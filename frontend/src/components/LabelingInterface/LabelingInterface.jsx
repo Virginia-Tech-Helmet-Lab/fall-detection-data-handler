@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { basePath } from '../../api/client';
+import apiClient from '../../api/client';
 import VideoList from './VideoList';
 import VideoPlayer from './VideoPlayer';
 import BoundingBoxTool from './BoundingBoxTool';
 import AnnotationPanel from './AnnotationPanel';
-import ProgressTracker from './ProgressTracker';
-import VideoQueue from './VideoQueue';
 import './LabelingInterface.css';
 import { useProject } from '../../contexts/ProjectContext';
 
 const LabelingInterface = () => {
-    const user = null; // auth removed
     const { currentProject } = useProject();
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [boundingBoxes, setBoundingBoxes] = useState([]);
@@ -19,46 +17,57 @@ const LabelingInterface = () => {
     const [currentFrame, setCurrentFrame] = useState(0);
     const [frameRate, setFrameRate] = useState(30);
     const [duration, setDuration] = useState(0);
-    
-    // For bounding box mode
     const [boundingBoxActive, setBoundingBoxActive] = useState(false);
     const [selectedLabel, setSelectedLabel] = useState('');
-    
-    // Create a ref for the AnnotationPanel to call its methods
     const annotationPanelRef = useRef();
-    
-    // Replace hardcoded dimensions with dynamic state
     const [videoDisplayWidth, setVideoDisplayWidth] = useState(640);
     const [videoDisplayHeight, setVideoDisplayHeight] = useState(480);
-    
-    // Create a ref for the video container
     const videoContainerRef = useRef(null);
-    
-// Add a function to update dimensions
+
+    // Video list for navigation
+    const [videos, setVideos] = useState([]);
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(-1);
+
+    // Fetch video list
+    useEffect(() => {
+        const fetchVideos = async () => {
+            try {
+                const params = new URLSearchParams();
+                if (currentProject?.project_id) params.append('project_id', currentProject.project_id);
+                params.append('per_page', '10000');
+                const response = await apiClient.get(`/api/videos?${params}`);
+                setVideos(response.data.videos || []);
+            } catch (err) {
+                console.error('Error fetching videos:', err);
+            }
+        };
+        fetchVideos();
+    }, [currentProject?.project_id]);
+
+    // Track current index when video changes
+    useEffect(() => {
+        if (selectedVideo && videos.length > 0) {
+            const idx = videos.findIndex(v => v.video_id === selectedVideo.video_id);
+            setCurrentVideoIndex(idx);
+        }
+    }, [selectedVideo, videos]);
+
     const updateVideoDimensions = () => {
         if (videoContainerRef.current) {
             const videoElement = videoContainerRef.current.querySelector('video');
             if (videoElement) {
-                // Get the actual rendered dimensions of the video
                 const rect = videoElement.getBoundingClientRect();
                 setVideoDisplayWidth(rect.width);
                 setVideoDisplayHeight(rect.height);
             }
         }
     };
-    
-    // Update dimensions when video is selected or window is resized
+
     useEffect(() => {
         if (selectedVideo) {
-            // Add a small delay to ensure video is rendered
             const timer = setTimeout(updateVideoDimensions, 100);
-            
-            // Add resize event listener
             window.addEventListener('resize', updateVideoDimensions);
-            
-            // Listen for our custom event
             window.addEventListener('videodimensionsupdate', updateVideoDimensions);
-            
             return () => {
                 clearTimeout(timer);
                 window.removeEventListener('resize', updateVideoDimensions);
@@ -66,42 +75,49 @@ const LabelingInterface = () => {
             };
         }
     }, [selectedVideo]);
-    
+
     const handleVideoSelect = (video) => {
         setSelectedVideo(video);
         setBoundingBoxes([]);
         setTemporalAnnotations([]);
         setBoundingBoxActive(false);
         setSelectedLabel('');
-        
-        // Fetch temporal annotations for the selected video
         if (video && video.video_id) {
             fetchTemporalAnnotations(video.video_id);
         }
     };
-    
+
+    const goToPrevVideo = useCallback(() => {
+        if (currentVideoIndex > 0) {
+            handleVideoSelect(videos[currentVideoIndex - 1]);
+        }
+    }, [currentVideoIndex, videos]);
+
+    const goToNextVideo = useCallback(() => {
+        if (currentVideoIndex < videos.length - 1) {
+            handleVideoSelect(videos[currentVideoIndex + 1]);
+        }
+    }, [currentVideoIndex, videos]);
+
     const handleBoxesUpdate = (boxes) => {
         setBoundingBoxes(boxes);
-        // Refresh the annotations in the panel
         if (annotationPanelRef.current) {
             annotationPanelRef.current.fetchBboxAnnotations();
         }
     };
-    
+
     const handlePositionChange = (time, frame, rate, totalDuration) => {
         setCurrentTime(time);
         setCurrentFrame(frame);
         setFrameRate(rate);
         setDuration(totalDuration);
     };
-    
+
     const handleBoundingBoxActivate = (isActive, label) => {
-        console.log("Bounding box activated:", isActive, label);
         setBoundingBoxActive(isActive);
         setSelectedLabel(label);
     };
 
-    // Add this function to fetch temporal annotations
     const fetchTemporalAnnotations = async (videoId) => {
         try {
             const response = await fetch(`${basePath}/api/annotations/${videoId}`);
@@ -114,107 +130,136 @@ const LabelingInterface = () => {
             setTemporalAnnotations([]);
         }
     };
-    
-    // Add keyboard navigation for video queue
+
+    // Keyboard shortcuts
     useEffect(() => {
         const handleKeydown = (event) => {
-            // Only handle navigation if not typing in an input field
-            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.tagName === 'SELECT') {
                 return;
             }
-            
-            // Get the VideoQueue component's navigation functions
-            const videoQueueElement = document.querySelector('.video-queue');
-            if (!videoQueueElement || user?.role !== 'annotator') {
-                return;
-            }
-            
-            if (event.key === 'ArrowLeft') {
-                event.preventDefault();
-                const prevBtn = videoQueueElement.querySelector('.prev-btn');
-                if (prevBtn && !prevBtn.disabled) {
-                    prevBtn.click();
-                }
-            } else if (event.key === 'ArrowRight') {
-                event.preventDefault();
-                const nextBtn = videoQueueElement.querySelector('.next-btn');
-                if (nextBtn && !nextBtn.disabled) {
-                    nextBtn.click();
-                }
+
+            switch (event.key) {
+                case 'ArrowLeft':
+                    if (event.shiftKey) {
+                        event.preventDefault();
+                        goToPrevVideo();
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (event.shiftKey) {
+                        event.preventDefault();
+                        goToNextVideo();
+                    }
+                    break;
+                case 'b':
+                case 'B':
+                    event.preventDefault();
+                    handleBoundingBoxActivate(!boundingBoxActive, selectedLabel);
+                    break;
+                default:
+                    break;
             }
         };
-        
+
         window.addEventListener('keydown', handleKeydown);
         return () => window.removeEventListener('keydown', handleKeydown);
-    }, [user?.role]);
-    
+    }, [goToPrevVideo, goToNextVideo, boundingBoxActive, selectedLabel]);
+
     return (
-        <div className="labeling-container">
-            <div className="video-list-panel">
-                {/* Video Queue Navigation for Annotators */}
-                {user && user.role === 'annotator' && (
-                    <VideoQueue 
-                        selectedVideo={selectedVideo}
+        <div className="labeling-layout">
+            <div className="labeling-container">
+                <div className="video-list-panel">
+                    <VideoList
                         onVideoSelect={handleVideoSelect}
+                        projectId={currentProject?.project_id}
                     />
-                )}
-                
-                {/* Progress Tracker for Annotators */}
-                {user && user.role === 'annotator' && (
-                    <ProgressTracker />
-                )}
-                <VideoList 
-                    onVideoSelect={handleVideoSelect} 
-                    userId={user?.user_id}
-                    projectId={currentProject?.project_id}
-                    userRole={user?.role}
-                />
-            </div>
-            <div className="video-display-panel">
-                {selectedVideo ? (
-                    <div className="video-player-container" style={{ position: 'relative' }}>
-                        <VideoPlayer 
-                            videoUrl={`${basePath}/api/video-file/${selectedVideo.video_id}`}
-                            onPositionChange={handlePositionChange}
-                        />
-                        <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            pointerEvents: boundingBoxActive ? 'auto' : 'none',
-                        }}>
-                            <BoundingBoxTool 
-                                canvasWidth={videoDisplayWidth} 
-                                canvasHeight={videoDisplayHeight} 
-                                onBoxesUpdate={handleBoxesUpdate}
-                                isActive={boundingBoxActive}
-                                currentFrame={currentFrame}
-                                videoId={selectedVideo.video_id}
-                                selectedLabel={selectedLabel}
-                            />
+                </div>
+                <div className="video-display-panel">
+                    {/* Video Navigation Bar */}
+                    {selectedVideo && videos.length > 0 && (
+                        <div className="video-nav-bar">
+                            <button
+                                className="nav-btn"
+                                onClick={goToPrevVideo}
+                                disabled={currentVideoIndex <= 0}
+                                title="Previous video (Shift+Left)"
+                            >
+                                &larr; Prev
+                            </button>
+                            <span className="nav-counter">
+                                Video {currentVideoIndex + 1} / {videos.length}
+                            </span>
+                            <button
+                                className="nav-btn"
+                                onClick={goToNextVideo}
+                                disabled={currentVideoIndex >= videos.length - 1}
+                                title="Next video (Shift+Right)"
+                            >
+                                Next &rarr;
+                            </button>
                         </div>
-                    </div>
-                ) : (
-                    <p className="select-prompt">Please select a video from the list.</p>
-                )}
-            </div>
-            <div className="annotation-panel-container">
-                {selectedVideo ? (
-                    <AnnotationPanel
-                        ref={annotationPanelRef}
-                        videoId={selectedVideo.video_id}
-                        currentFrame={currentFrame}
-                        currentTime={currentTime}
-                        frameRate={frameRate}
-                        duration={duration}
-                        onBoundingBoxActivate={handleBoundingBoxActivate}
-                        isBoundingBoxActive={boundingBoxActive}
-                    />
-                ) : (
-                    <p>No video selected.</p>
-                )}
+                    )}
+
+                    {selectedVideo ? (
+                        <div className="video-player-container" ref={videoContainerRef} style={{ position: 'relative' }}>
+                            <VideoPlayer
+                                videoUrl={`${basePath}/api/video-file/${selectedVideo.video_id}`}
+                                onPositionChange={handlePositionChange}
+                            />
+                            <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                pointerEvents: boundingBoxActive ? 'auto' : 'none',
+                            }}>
+                                <BoundingBoxTool
+                                    canvasWidth={videoDisplayWidth}
+                                    canvasHeight={videoDisplayHeight}
+                                    onBoxesUpdate={handleBoxesUpdate}
+                                    isActive={boundingBoxActive}
+                                    currentFrame={currentFrame}
+                                    videoId={selectedVideo.video_id}
+                                    selectedLabel={selectedLabel}
+                                />
+                            </div>
+                            {/* Hotkey Footer */}
+                            <div className="hotkey-footer">
+                                <div className="hotkey-group">
+                                    <kbd>Space</kbd> <span>Play / Pause</span>
+                                </div>
+                                <div className="hotkey-group">
+                                    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <span>Seek</span>
+                                </div>
+                                <div className="hotkey-group">
+                                    <kbd>Shift</kbd>+<kbd>&larr;</kbd> <kbd>&rarr;</kbd> <span>Prev / Next video</span>
+                                </div>
+                                <div className="hotkey-group">
+                                    <kbd>B</kbd> <span>Bbox mode</span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="select-prompt">Select a video from the list to begin annotating.</p>
+                    )}
+                </div>
+                <div className="annotation-panel-container">
+                    {selectedVideo ? (
+                        <AnnotationPanel
+                            ref={annotationPanelRef}
+                            videoId={selectedVideo.video_id}
+                            currentFrame={currentFrame}
+                            currentTime={currentTime}
+                            frameRate={frameRate}
+                            duration={duration}
+                            onBoundingBoxActivate={handleBoundingBoxActivate}
+                            isBoundingBoxActive={boundingBoxActive}
+                        />
+                    ) : (
+                        <p>No video selected.</p>
+                    )}
+                </div>
             </div>
         </div>
     );

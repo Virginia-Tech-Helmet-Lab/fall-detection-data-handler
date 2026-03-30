@@ -1,11 +1,20 @@
 /* LabelingInterface.css */
+
+.labeling-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 141px);
+    overflow: hidden;
+    margin: -24px;
+}
+
 .labeling-container {
     display: flex;
-    height: calc(100vh - 120px);
+    flex: 1;
+    min-height: 0;
     max-width: 100%;
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
     overflow: hidden;
 }
 
@@ -16,15 +25,17 @@
     border-right: 1px solid #e0e0e0;
     overflow-y: auto;
     background: #fafafa;
+    height: 100%;
 }
 
 .video-display-panel {
     flex: 1;
-    padding: 20px;
+    padding: 12px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
     overflow-y: auto;
+    height: 100%;
 }
 
 .annotation-panel-container {
@@ -33,6 +44,8 @@
     padding: 10px;
     border-left: 1px solid #e0e0e0;
     overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .video-list-panel h3,
@@ -52,18 +65,50 @@
     text-align: center;
 }
 
-.bbox-save-indicator {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: rgba(0,0,0,0.7);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 4px;
-    z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+/* Video Navigation Bar */
+.video-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+    padding: 8px 0;
+    margin-bottom: 4px;
 }
 
+.nav-btn {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #555;
+    transition: all 0.15s;
+    font-weight: 500;
+}
+
+.nav-btn:hover:not(:disabled) {
+    background: #f0f0f0;
+    border-color: #bbb;
+    color: #333;
+}
+
+.nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.nav-counter {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    min-width: 120px;
+    text-align: center;
+}
+
+/* Video Player Container */
 .video-player-container {
     margin-bottom: 20px;
     width: 100%;
@@ -72,4 +117,57 @@
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Hotkey Footer */
+.hotkey-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 8px 16px;
+    background: #1e1e1e;
+    border-radius: 0 0 8px 8px;
+    margin: -15px -15px 0 -15px;
+    margin-top: 0;
+}
+
+.hotkey-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #999;
+    white-space: nowrap;
+}
+
+.hotkey-group span {
+    margin-left: 4px;
+    color: #777;
+}
+
+kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    color: #ddd;
+    font-family: monospace;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    box-shadow: 0 1px 0 #555;
+}
+
+/* Bbox indicator */
+.bbox-save-indicator {
+    position: fixed;
+    bottom: 50px;
+    right: 20px;
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 4px;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }

@@ -1,88 +1,156 @@
-# Label Software - Video Annotation Platform
+# Label Software
 
-A web application for importing, normalizing, and annotating videos for fall detection research.
+Video annotation platform for the VT Helmet Lab. Designed around the [Data Catalog](../Data-Catalog) as the single source of truth for datasets and annotations.
 
-## Tech Stack
+## Architecture
 
-- **Backend**: FastAPI + SQLAlchemy + OpenCV + FFmpeg
-- **Frontend**: React 19 + Vite + Chart.js + Axios
-- **Database**: SQLite (dev) / PostgreSQL (production)
+- **Backend**: FastAPI, SQLAlchemy, OpenCV, Python 3.12+
+- **Frontend**: React 19, Vite, Axios
+- **Database**: SQLite (label storage), Data Catalog SQLite (ground truth)
 - **Package Management**: uv (Python), npm (JavaScript)
 
-## Quick Start
+The backend serves a built React SPA and a REST API from a single process. Videos are referenced by path from the Data Catalog -- no file duplication.
 
-### Prerequisites
+## Setup
 
-- Python 3.12+
-- Node.js 18+ and npm
-- FFmpeg (optional, for video normalization and codec conversion)
-
-### Setup
+Prerequisites: Python 3.12+, Node.js 18+, npm.
 
 ```bash
-# Install Python dependencies
 uv sync
-
-# Install frontend dependencies
 cd frontend && npm install && cd ..
 ```
 
-### Development
+On HPC systems (e.g., ARC), load the Node.js module first:
 
 ```bash
-# Start both backend (port 8000) and frontend (port 3000)
-uv run label-dev
+module load nodejs
 ```
 
-The Vite dev server proxies `/api/*` requests to the FastAPI backend automatically.
-
-### Production
+## Running
 
 ```bash
-# Build the frontend
-uv run label-build
+# Build frontend and serve (production)
+cd frontend && npm run build && cd ..
+uv run label
 
-# Serve everything from FastAPI (single process, port 8000)
-uv run label-serve
+# Or use the explicit commands
+uv run label-build    # build frontend
+uv run label-serve    # start server on port 8888
+uv run label-dev      # dev mode (FastAPI + Vite hot reload)
 ```
+
+Access via Open OnDemand at `https://ood.arc.vt.edu/rnode/<host>/<session>/proxy/8888/`.
 
 ## Project Structure
 
 ```
 Label-Software/
-  pyproject.toml              # Python project config (uv)
-  src/
-    label_software/           # FastAPI backend
-      main.py                 # App entry point, CORS, router registration
-      config.py               # Settings (pydantic-settings)
-      database.py             # SQLAlchemy engine + session
-      models.py               # Project, Video, TemporalAnnotation, BoundingBoxAnnotation
-      schemas.py              # Pydantic request models
-      cli.py                  # CLI: label-dev, label-serve, label-build
-      routers/                # API routes
-      services/               # Business logic, FFmpeg, OpenCV
+  pyproject.toml
+  src/label_software/
+    main.py              # FastAPI app, lifespan, CORS, SPA serving
+    config.py            # Settings (pydantic-settings, env prefix LABEL_)
+    database.py          # SQLAlchemy engine, session, migrations
+    models.py            # Project, Video, TemporalAnnotation, BoundingBoxAnnotation
+    schemas.py           # Pydantic request models
+    cli.py               # CLI entry points (label, label-dev, label-build)
+    routers/
+      catalog.py         # Data Catalog browse, import, publish
+      videos.py          # Video serving, upload, thumbnails
+      annotations.py     # Temporal + bounding box CRUD
+      projects.py        # Project CRUD, status, stats
+      export.py          # JSON/CSV export, stats
+      review.py          # Review workflow
+      images.py          # Frame extraction (OpenCV)
+      progress.py        # Project progress tracking
+    services/
+      catalog.py         # Read-only catalog DB queries
+      catalog_export.py  # Publish annotations to catalog (versioned JSON)
+      video_processing.py
+      annotation.py
+      bounding_box.py
+      project.py
   frontend/
-    vite.config.js            # Vite config with dev proxy
-    index.html                # Entry HTML
+    vite.config.js       # Dev proxy, base path for OOD
+    index.html
     src/
-      api/client.js           # Centralized axios instance
-      App.jsx                 # Routes and layout
-      components/             # React components
-      contexts/               # React context providers
+      api/client.js      # Axios instance with OOD base path detection
+      data/labelTemplates.js  # Label template definitions
+      App.jsx            # HashRouter, routes
+      components/
+        Home/            # Landing page, workflow overview
+        Projects/        # Dashboard, creation, settings, cards
+        DataImport/      # Catalog import
+        LabelingInterface/  # Video player, annotation panel, bbox tool
+        DataExport/      # Catalog publish, JSON/CSV download
+      contexts/
+        ProjectContext.jsx  # Global project state
 ```
+
+## Data Flow
+
+```
+Data Catalog (datasets, videos)
+      |
+      | Import by reference (no copy)
+      v
+Label Software (projects, annotations)
+      |
+      | Publish (versioned JSON)
+      v
+Data Catalog (annotations/ directory, registered in catalog.db)
+```
+
+Videos are never copied. Import creates `Video` records with `source_type="catalog"` and `catalog_path` pointing to the original file. Annotations are stored in the Label Software database during active labeling, then published back to the Data Catalog as versioned JSON files.
+
+## Annotation Types
+
+**Temporal annotations**: Mark time-based events (e.g., falls) with start/end times and frame numbers.
+
+**Bounding box annotations**: Mark spatial regions per frame with a body part label and pixel coordinates.
+
+## Label Templates
+
+Projects can be initialized with predefined label sets:
+
+| Template | Event Types | Body Parts |
+|----------|-------------|------------|
+| Fall Detection | Fall | head, shoulder, elbow, wrist, hip, knee, ankle |
+| COCO Keypoints | COCO supercategories | 17-point skeleton |
+| Activity Recognition | Walking, Running, Sitting, Standing, etc. | head, torso, arms, legs |
+| Custom (Blank) | (empty) | (empty) |
+
+Labels are project-scoped and extensible. New labels can be added from the labeling interface and persist to the project's annotation schema.
 
 ## API
 
-FastAPI auto-generates API docs at:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+Interactive docs available at `/docs` (Swagger) and `/redoc` when the server is running.
 
-## Features
+Key endpoints:
 
-- **Data Import**: Upload videos from local files, Dropbox, Google Drive, or URLs
-- **Video Normalization**: Adjust resolution, framerate, brightness/contrast via FFmpeg
-- **Temporal Annotations**: Mark fall events with start/end times and frames
-- **Bounding Box Tools**: Body part tracking (head, shoulder, hip, etc.)
-- **Project Management**: Organize videos into projects with progress tracking
-- **Analytics Dashboard**: Interactive charts for project and annotation metrics
-- **Multi-format Export**: JSON, CSV, and ML dataset export (train/val/test splits)
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/catalog/datasets` | List datasets from Data Catalog |
+| `POST /api/catalog/import` | Import videos by reference |
+| `POST /api/catalog/publish/{project_id}` | Publish annotations to catalog |
+| `GET /api/catalog/annotations/{dataset_id}` | List published annotation versions |
+| `GET /api/videos` | List videos (paginated) |
+| `GET /api/video-file/{video_id}` | Serve video (handles catalog paths + transcoding) |
+| `POST /api/annotations` | Create temporal annotation |
+| `POST /api/bbox-annotations` | Create bounding box annotation |
+| `GET /api/projects` | List projects |
+| `POST /api/export` | Export annotations (JSON/CSV) |
+
+## Configuration
+
+Environment variables (prefix `LABEL_`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LABEL_DATABASE_URL` | `sqlite:///instance/fall_detection.db` | Label database |
+| `LABEL_UPLOAD_FOLDER` | `./uploads` | Upload directory |
+| `LABEL_CATALOG_DB_PATH` | `/projects/helmetlab1/Data-Catalog/catalog.db` | Catalog database |
+| `LABEL_CATALOG_DATA_ROOT` | `/projects/helmetlab1/Data-Catalog/data` | Catalog data root |
+
+## Contact
+
+Feature requests, bugs, or questions: ethan02@vt.edu

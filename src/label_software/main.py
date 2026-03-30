@@ -39,12 +39,11 @@ app.add_middleware(
 )
 
 # Register routers
-from .routers import videos, annotations, projects, analytics, export, review, images, progress, catalog
+from .routers import videos, annotations, projects, export, review, images, progress, catalog
 
 app.include_router(videos.router, prefix="/api")
 app.include_router(annotations.router, prefix="/api")
 app.include_router(projects.router, prefix="/api/projects")
-app.include_router(analytics.router, prefix="/api/analytics")
 app.include_router(export.router, prefix="/api")
 app.include_router(review.router, prefix="/api")
 app.include_router(images.router, prefix="/api")

@@ -277,6 +277,8 @@ const AnnotationPanel = forwardRef(({
   return (
     <div className="annotation-panel">
 
+      <div className="annotation-controls">
+
       {/* Annotator Identity */}
       <div className="annotator-name-section">
         <label>Annotator:</label>
@@ -450,8 +452,11 @@ const AnnotationPanel = forwardRef(({
         </div>
       )}
 
-      {/* Existing Annotations Section */}
-      <h3>Existing Annotations</h3>
+      </div>{/* end annotation-controls */}
+
+      {/* Existing Annotations Section — scrollable */}
+      <div className="existing-annotations">
+        <h3>Existing Annotations</h3>
 
       <h4>Temporal Annotations</h4>
       {temporalAnnotations.length > 0 ? (
@@ -506,6 +511,7 @@ const AnnotationPanel = forwardRef(({
       ) : (
         <p>No bounding box annotations yet.</p>
       )}
+      </div>{/* end existing-annotations */}
     </div>
   );
 });

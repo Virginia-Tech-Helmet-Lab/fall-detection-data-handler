@@ -22,7 +22,7 @@
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    overflow: hidden;
 }
 
 .project-card:hover {
@@ -204,6 +204,7 @@
 .progress-details {
     font-size: 0.8rem;
     color: #666;
+    margin-bottom: 4px;
 }
 
 /* Footer */
@@ -213,8 +214,8 @@
     align-items: center;
     font-size: 0.8rem;
     color: #999;
-    margin-top: auto;
-    padding-top: 16px;
+    margin-top: 12px;
+    padding-top: 12px;
     border-top: 1px solid #f0f0f0;
 }
 

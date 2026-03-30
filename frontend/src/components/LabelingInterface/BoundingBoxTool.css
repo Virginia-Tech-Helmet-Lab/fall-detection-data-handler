@@ -128,3 +128,77 @@
 .bbox-canvas-active {
   cursor: crosshair !important;
 }
+
+/* Bounding Box Confirmation Modal */
+.bbox-modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bbox-modal {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 20px 24px;
+  min-width: 280px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.bbox-modal p {
+  color: #eee;
+  margin: 0 0 16px 0;
+  font-size: 0.95rem;
+}
+
+.bbox-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.bbox-modal-cancel {
+  padding: 6px 16px;
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.bbox-modal-cancel:hover {
+  background: #444;
+  color: #fff;
+}
+
+.bbox-modal-confirm {
+  padding: 6px 16px;
+  background: #660000;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.bbox-modal-confirm:hover {
+  background: #4d0000;
+}
+
+.bbox-modal-confirm.danger {
+  background: #dc3545;
+}
+
+.bbox-modal-confirm.danger:hover {
+  background: #c82333;
+}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaUpload, FaTags, FaDownload, FaFolder, FaChartBar } from 'react-icons/fa';
+import { FaHome, FaUpload, FaTags, FaDownload, FaFolder } from 'react-icons/fa';
 import './DockingBar.css';
 import vtLogo from '../assets/vt-logo.jpeg';
 import apiClient from '../api/client';
@@ -11,7 +11,6 @@ const tabs = [
   { name: '1. Import Data', path: '/import', icon: <FaUpload />, stage: 'import' },
   { name: '2. Label', path: '/labeling', icon: <FaTags />, stage: 'label' },
   { name: '3. Export', path: '/export', icon: <FaDownload />, stage: 'export' },
-  { name: 'Analytics', path: '/analytics', icon: <FaChartBar />, stage: 'analytics' },
 ];
 
 const DockingBar = () => {
