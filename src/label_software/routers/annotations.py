@@ -21,6 +21,11 @@ def get_video_annotations(video_id: int, db: Session = Depends(get_db)):
 
 @router.post("/annotations")
 def create_annotation(body: AnnotationCreate, db: Session = Depends(get_db)):
+    # Validate: need either frame_index (single-frame) or start_frame+end_frame (range)
+    has_frame = body.frame_index is not None
+    has_range = body.start_frame is not None and body.end_frame is not None
+    if not has_frame and not has_range:
+        raise HTTPException(400, detail="Provide frame_index (single-frame) or start_frame + end_frame (range)")
     try:
         data = body.model_dump()
         result = save_annotation(db, data, annotator_name=body.annotator_name)

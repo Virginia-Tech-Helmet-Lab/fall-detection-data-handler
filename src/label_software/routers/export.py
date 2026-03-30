@@ -27,7 +27,7 @@ def export_annotations_get(db: Session = Depends(get_db)):
             'annotation_id': a.annotation_id, 'video_id': a.video_id,
             'start_time': a.start_time, 'end_time': a.end_time,
             'start_frame': a.start_frame, 'end_frame': a.end_frame,
-            'label': a.label, 'annotator_name': a.annotator_name,
+            'label': a.label, 'annotator_name': a.annotator_name, 'frame_index': a.frame_index,
         } for a in temporal],
         'bounding_box_annotations': [{
             'bbox_id': b.bbox_id, 'video_id': b.video_id,
@@ -64,7 +64,8 @@ def export_data(body: ExportRequest, db: Session = Depends(get_db)):
                 'resolution': video.resolution, 'framerate': video.framerate,
                 'duration': video.duration, 'status': video.status,
                 'temporal_annotations': [{
-                    'label': a.label, 'start_time': a.start_time, 'end_time': a.end_time,
+                    'label': a.label, 'frame_index': a.frame_index,
+                    'start_time': a.start_time, 'end_time': a.end_time,
                     'start_frame': a.start_frame, 'end_frame': a.end_frame, 'annotator_name': a.annotator_name,
                 } for a in db.query(TemporalAnnotation).filter_by(video_id=video.video_id).all()],
                 'bounding_box_annotations': [{
@@ -123,7 +124,8 @@ def export_ml_dataset(body: MLDatasetRequest, db: Session = Depends(get_db)):
                 'video_id': video.video_id, 'filename': video.filename,
                 'resolution': video.resolution, 'framerate': video.framerate, 'duration': video.duration,
                 'temporal_annotations': [{
-                    'label': a.label, 'start_time': a.start_time, 'end_time': a.end_time,
+                    'label': a.label, 'frame_index': a.frame_index,
+                    'start_time': a.start_time, 'end_time': a.end_time,
                     'start_frame': a.start_frame, 'end_frame': a.end_frame,
                 } for a in db.query(TemporalAnnotation).filter_by(video_id=video.video_id).all()],
                 'bounding_box_annotations': [{

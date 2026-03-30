@@ -25,6 +25,7 @@ def _add_missing_columns(eng):
         ("videos", "catalog_dataset_id", "INTEGER"),
         ("projects", "catalog_dataset_id", "INTEGER"),
         ("projects", "catalog_dataset_name", "TEXT"),
+        ("temporal_annotations", "frame_index", "INTEGER"),
     ]
     with eng.connect() as conn:
         for table, column, col_type in migrations:

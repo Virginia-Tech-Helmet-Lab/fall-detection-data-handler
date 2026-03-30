@@ -3,11 +3,12 @@ from pydantic import BaseModel
 
 class AnnotationCreate(BaseModel):
     video_id: int
-    start_time: float
-    end_time: float
-    start_frame: int
-    end_frame: int
     label: str
+    frame_index: int | None = None
+    start_time: float | None = None
+    end_time: float | None = None
+    start_frame: int | None = None
+    end_frame: int | None = None
     annotator_name: str | None = None
 
 

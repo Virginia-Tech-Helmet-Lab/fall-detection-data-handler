@@ -48,6 +48,9 @@ const AnnotationPanel = forwardRef(({
   const [startFrame, setStartFrame] = useState(null);
   const [endFrame, setEndFrame] = useState(null);
 
+  // Annotation mode
+  const [rangeMode, setRangeMode] = useState(false);
+
   // States for bounding box annotation
   const [selectedBodyPart, setSelectedBodyPart] = useState('head');
 
@@ -191,24 +194,35 @@ const AnnotationPanel = forwardRef(({
   };
 
   const handleSaveTemporalAnnotation = async () => {
-    if (!annotationLabel || startTime === null || endTime === null) {
-      alert('Please fill in all fields for temporal annotation');
+    if (!annotationLabel) {
+      alert('Please select a label');
       return;
+    }
+    if (rangeMode && (startFrame === null || endFrame === null)) {
+      alert('Please set start and end frames');
+      return;
+    }
+
+    const payload = {
+      video_id: videoId,
+      label: annotationLabel,
+      annotator_name: annotatorName || null,
+    };
+
+    if (rangeMode) {
+      payload.start_time = startTime;
+      payload.end_time = endTime;
+      payload.start_frame = startFrame;
+      payload.end_frame = endFrame;
+    } else {
+      payload.frame_index = currentFrame;
     }
 
     try {
       const response = await fetch(`${basePath}/api/annotations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          video_id: videoId,
-          start_time: startTime,
-          end_time: endTime,
-          start_frame: startFrame,
-          end_frame: endFrame,
-          label: annotationLabel,
-          annotator_name: annotatorName || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -220,7 +234,7 @@ const AnnotationPanel = forwardRef(({
         fetchTemporalAnnotations();
       } else {
         const errorData = await response.json();
-        alert(`Failed to save annotation: ${errorData.error || 'Unknown error'}`);
+        alert(`Failed to save annotation: ${errorData.detail || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error saving annotation:', error);
@@ -345,13 +359,13 @@ const AnnotationPanel = forwardRef(({
         </div>
       </div>
 
-      {/* Temporal Annotation Section */}
-      <h3>Temporal Annotation</h3>
+      {/* Annotation Section */}
+      <h3>Annotation</h3>
       <div className="form-group">
         <label>Label:</label>
         <div className="label-select-row">
           <select value={annotationLabel} onChange={handleLabelChange}>
-            <option value="">Select an event type</option>
+            <option value="">Select a label</option>
             {eventTypes.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
@@ -359,7 +373,7 @@ const AnnotationPanel = forwardRef(({
           <button
             className="add-label-btn"
             onClick={() => setShowAddEventType(!showAddEventType)}
-            title="Add custom event type"
+            title="Add custom label"
             type="button"
           >+</button>
         </div>
@@ -369,7 +383,7 @@ const AnnotationPanel = forwardRef(({
               type="text"
               value={newEventType}
               onChange={(e) => setNewEventType(e.target.value)}
-              placeholder="New event type"
+              placeholder="New label"
               onKeyDown={(e) => e.key === 'Enter' && handleAddEventType()}
             />
             <button onClick={handleAddEventType} type="button">Add</button>
@@ -377,35 +391,53 @@ const AnnotationPanel = forwardRef(({
         )}
       </div>
 
-      <div className="frame-marking-buttons">
-        <button className="mark-start-btn" onClick={handleSetStart}>
-          Set Start {startFrame ? `(${startFrame})` : "(Not Set)"}
-        </button>
-        <button className="mark-end-btn" onClick={handleSetEnd}>
-          Set End {endFrame ? `(${endFrame})` : "(Not Set)"}
-        </button>
+      <div className="annotation-mode-toggle">
+        <button
+          className={`mode-btn ${!rangeMode ? 'active' : ''}`}
+          onClick={() => setRangeMode(false)}
+        >Frame</button>
+        <button
+          className={`mode-btn ${rangeMode ? 'active' : ''}`}
+          onClick={() => setRangeMode(true)}
+        >Range</button>
       </div>
 
-      {startTime !== null && (
-        <div className="frame-indicator start-frame">
-          <span>Start Time:</span>
-          <span>{startTime.toFixed(2)}s (Frame {startFrame})</span>
+      {!rangeMode ? (
+        <div className="frame-indicator current">
+          <span>Frame:</span>
+          <span>{currentFrame}</span>
         </div>
-      )}
-
-      {endTime !== null && (
-        <div className="frame-indicator end-frame">
-          <span>End Time:</span>
-          <span>{endTime.toFixed(2)}s (Frame {endFrame})</span>
-        </div>
+      ) : (
+        <>
+          <div className="frame-marking-buttons">
+            <button className="mark-start-btn" onClick={handleSetStart}>
+              Set Start {startFrame !== null ? `(${startFrame})` : "(Not Set)"}
+            </button>
+            <button className="mark-end-btn" onClick={handleSetEnd}>
+              Set End {endFrame !== null ? `(${endFrame})` : "(Not Set)"}
+            </button>
+          </div>
+          {startTime !== null && (
+            <div className="frame-indicator start-frame">
+              <span>Start:</span>
+              <span>{startTime.toFixed(2)}s (Frame {startFrame})</span>
+            </div>
+          )}
+          {endTime !== null && (
+            <div className="frame-indicator end-frame">
+              <span>End:</span>
+              <span>{endTime.toFixed(2)}s (Frame {endFrame})</span>
+            </div>
+          )}
+        </>
       )}
 
       <button
         className="save-button"
         onClick={handleSaveTemporalAnnotation}
-        disabled={!annotationLabel || startTime === null || endTime === null}
+        disabled={!annotationLabel || (rangeMode && (startFrame === null || endFrame === null))}
       >
-        Save Temporal Annotation
+        Save Annotation
       </button>
 
       {/* Bounding Box Annotation Section */}
@@ -458,19 +490,29 @@ const AnnotationPanel = forwardRef(({
       <div className="existing-annotations">
         <h3>Existing Annotations</h3>
 
-      <h4>Temporal Annotations</h4>
+      <h4>Annotations</h4>
       {temporalAnnotations.length > 0 ? (
         <ul className="annotation-list">
           {temporalAnnotations.map(anno => (
             <li key={anno.annotation_id} className="annotation-item">
               <div className="annotation-details">
                 <span className="annotation-label">{anno.label}</span>
-                <span className="annotation-time">
-                  {anno.start_time.toFixed(2)}s - {anno.end_time.toFixed(2)}s
-                </span>
-                <span className="annotation-frames">
-                  Frames: {anno.start_frame} - {anno.end_frame}
-                </span>
+                {anno.frame_index != null ? (
+                  <span className="annotation-frames">Frame {anno.frame_index}</span>
+                ) : (
+                  <>
+                    {anno.start_time != null && anno.end_time != null && (
+                      <span className="annotation-time">
+                        {anno.start_time.toFixed(2)}s - {anno.end_time.toFixed(2)}s
+                      </span>
+                    )}
+                    {anno.start_frame != null && anno.end_frame != null && (
+                      <span className="annotation-frames">
+                        Frames {anno.start_frame} - {anno.end_frame}
+                      </span>
+                    )}
+                  </>
+                )}
                 {anno.annotator_name && (
                   <span className="annotation-signed">by {anno.annotator_name}</span>
                 )}
@@ -485,7 +527,7 @@ const AnnotationPanel = forwardRef(({
           ))}
         </ul>
       ) : (
-        <p>No temporal annotations yet.</p>
+        <p>No annotations yet.</p>
       )}
 
       <h4>Bounding Box Annotations</h4>

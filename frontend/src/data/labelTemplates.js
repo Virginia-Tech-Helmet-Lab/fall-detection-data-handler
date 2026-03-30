@@ -13,7 +13,12 @@ export const LABEL_TEMPLATES = [
     name: 'COCO Keypoints',
     description: 'COCO supercategories + 17-point human pose skeleton',
     schema: {
-      event_types: ['person', 'vehicle', 'animal', 'accessory', 'sports', 'food', 'furniture', 'electronic', 'appliance'],
+      event_types: [
+        'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
+        'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+        'left_wrist', 'right_wrist', 'left_hip', 'right_hip',
+        'left_knee', 'right_knee', 'left_ankle', 'right_ankle',
+      ],
       body_parts: [
         'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
         'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',

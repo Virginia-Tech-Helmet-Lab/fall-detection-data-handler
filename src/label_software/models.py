@@ -93,10 +93,11 @@ class TemporalAnnotation(Base):
 
     annotation_id = mapped_column(Integer, primary_key=True)
     video_id = mapped_column(Integer, ForeignKey('videos.video_id'), nullable=False)
-    start_time = mapped_column(Float, nullable=False)
-    end_time = mapped_column(Float, nullable=False)
-    start_frame = mapped_column(Integer, nullable=False)
-    end_frame = mapped_column(Integer, nullable=False)
+    frame_index = mapped_column(Integer, nullable=True)      # single-frame annotation
+    start_time = mapped_column(Float, nullable=True)          # range annotation
+    end_time = mapped_column(Float, nullable=True)
+    start_frame = mapped_column(Integer, nullable=True)
+    end_frame = mapped_column(Integer, nullable=True)
     label = mapped_column(String(50), nullable=False)
     annotator_name = mapped_column(String(100))
     created_at = mapped_column(DateTime, default=datetime.utcnow)

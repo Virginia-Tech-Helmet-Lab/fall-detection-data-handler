@@ -75,6 +75,7 @@ def publish_to_catalog(db: Session, project_id: int, version: str | None = None)
             "duration": video.duration,
             "temporal_annotations": [{
                 "label": a.label,
+                "frame_index": a.frame_index,
                 "start_time": a.start_time,
                 "end_time": a.end_time,
                 "start_frame": a.start_frame,

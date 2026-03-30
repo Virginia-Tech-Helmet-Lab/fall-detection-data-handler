@@ -7,6 +7,7 @@ def get_annotations(db: Session, video_id):
     return [{
         "annotation_id": a.annotation_id,
         "video_id": a.video_id,
+        "frame_index": a.frame_index,
         "start_time": a.start_time,
         "end_time": a.end_time,
         "start_frame": a.start_frame,
@@ -20,6 +21,7 @@ def get_annotations(db: Session, video_id):
 def save_annotation(db: Session, data, annotator_name=None):
     annotation = TemporalAnnotation(
         video_id=data.get('video_id'),
+        frame_index=data.get('frame_index'),
         start_time=data.get('start_time'),
         end_time=data.get('end_time'),
         start_frame=data.get('start_frame'),
@@ -33,6 +35,7 @@ def save_annotation(db: Session, data, annotator_name=None):
     return {
         "status": "saved",
         "annotation_id": annotation.annotation_id,
+        "frame_index": annotation.frame_index,
         "start_time": annotation.start_time,
         "end_time": annotation.end_time,
         "start_frame": annotation.start_frame,
