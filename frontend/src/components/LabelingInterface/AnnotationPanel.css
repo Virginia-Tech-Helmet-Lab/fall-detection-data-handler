@@ -1,25 +1,15 @@
 /* AnnotationPanel.css */
 
 .annotation-panel {
-    display: flex;
-    flex-direction: column;
     height: 100%;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-width: 100%;
 }
 
-.annotation-controls {
-    flex-shrink: 0;
-    overflow-y: auto;
-    max-height: 60%;
-}
-
-.existing-annotations {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    border-top: 2px solid #e0e0e0;
-    padding-top: 8px;
-    margin-top: 8px;
+.annotation-panel * {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .annotator-name-section {
@@ -42,6 +32,7 @@
 
 .annotator-name-input {
     flex: 1;
+    min-width: 0;
     padding: 6px 10px;
     border: 1px solid rgba(255,255,255,0.3);
     border-radius: 4px;
@@ -325,12 +316,6 @@
     flex-direction: column;
 }
 
-.annotation-panel {
-    height: 100%;
-    padding: 15px;
-    overflow-y: auto;
-}
-
 .tab-navigation {
     display: flex;
     margin-bottom: 20px;
@@ -392,24 +377,6 @@
     padding: 0;
 }
 
-.annotation-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border: 1px solid #ddd;
-    margin-bottom: 10px;
-    border-radius: 4px;
-}
-
-.delete-button {
-    padding: 5px 10px;
-    background: #f44336;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
 
 h3 {
     margin: 15px 0 10px 0;
@@ -424,6 +391,7 @@ h3 {
 
 .label-select-row select {
     flex: 1;
+    min-width: 0;
 }
 
 .add-label-btn {
@@ -457,6 +425,7 @@ h3 {
 
 .add-label-form input {
     flex: 1;
+    min-width: 0;
     padding: 6px 10px;
     border: 1px solid #555;
     border-radius: 4px;
@@ -573,6 +542,9 @@ h3 {
 .template-loader-item span {
     font-size: 0.75rem;
     color: #888;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .template-apply-header {

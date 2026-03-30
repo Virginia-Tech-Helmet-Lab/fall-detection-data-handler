@@ -291,8 +291,6 @@ const AnnotationPanel = forwardRef(({
   return (
     <div className="annotation-panel">
 
-      <div className="annotation-controls">
-
       {/* Annotator Identity */}
       <div className="annotator-name-section">
         <label>Annotator:</label>
@@ -484,76 +482,6 @@ const AnnotationPanel = forwardRef(({
         </div>
       )}
 
-      </div>{/* end annotation-controls */}
-
-      {/* Existing Annotations Section — scrollable */}
-      <div className="existing-annotations">
-        <h3>Existing Annotations</h3>
-
-      <h4>Annotations</h4>
-      {temporalAnnotations.length > 0 ? (
-        <ul className="annotation-list">
-          {temporalAnnotations.map(anno => (
-            <li key={anno.annotation_id} className="annotation-item">
-              <div className="annotation-details">
-                <span className="annotation-label">{anno.label}</span>
-                {anno.frame_index != null ? (
-                  <span className="annotation-frames">Frame {anno.frame_index}</span>
-                ) : (
-                  <>
-                    {anno.start_time != null && anno.end_time != null && (
-                      <span className="annotation-time">
-                        {anno.start_time.toFixed(2)}s - {anno.end_time.toFixed(2)}s
-                      </span>
-                    )}
-                    {anno.start_frame != null && anno.end_frame != null && (
-                      <span className="annotation-frames">
-                        Frames {anno.start_frame} - {anno.end_frame}
-                      </span>
-                    )}
-                  </>
-                )}
-                {anno.annotator_name && (
-                  <span className="annotation-signed">by {anno.annotator_name}</span>
-                )}
-              </div>
-              <button
-                onClick={() => handleDeleteAnnotation(anno.annotation_id)}
-                className="delete-button"
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No annotations yet.</p>
-      )}
-
-      <h4>Bounding Box Annotations</h4>
-      {bboxAnnotations.length > 0 ? (
-        <ul className="annotation-list">
-          {bboxAnnotations.map(bbox => (
-            <li key={bbox.bbox_id} className="annotation-item">
-              <div className="annotation-details">
-                <span className="annotation-label">{bbox.part_label}</span>
-                <span>Frame: {bbox.frame_index}</span>
-                <span>Position: ({Math.round(bbox.x)}, {Math.round(bbox.y)})</span>
-                <span>Size: {Math.round(bbox.width)} x {Math.round(bbox.height)}</span>
-              </div>
-              <button
-                onClick={() => handleDeleteBbox(bbox.bbox_id)}
-                className="delete-button"
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No bounding box annotations yet.</p>
-      )}
-      </div>{/* end existing-annotations */}
     </div>
   );
 });

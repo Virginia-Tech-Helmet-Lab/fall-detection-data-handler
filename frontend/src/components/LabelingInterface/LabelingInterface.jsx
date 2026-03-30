@@ -19,6 +19,7 @@ const LabelingInterface = () => {
     const [duration, setDuration] = useState(0);
     const [boundingBoxActive, setBoundingBoxActive] = useState(false);
     const [selectedLabel, setSelectedLabel] = useState('');
+    const [viewerOpen, setViewerOpen] = useState(false);
     const annotationPanelRef = useRef();
     const [videoDisplayWidth, setVideoDisplayWidth] = useState(640);
     const [videoDisplayHeight, setVideoDisplayHeight] = useState(480);
@@ -84,6 +85,7 @@ const LabelingInterface = () => {
         setSelectedLabel('');
         if (video && video.video_id) {
             fetchTemporalAnnotations(video.video_id);
+            fetchBboxAnnotations(video.video_id);
         }
     };
 
@@ -100,10 +102,7 @@ const LabelingInterface = () => {
     }, [currentVideoIndex, videos]);
 
     const handleBoxesUpdate = (boxes) => {
-        setBoundingBoxes(boxes);
-        if (annotationPanelRef.current) {
-            annotationPanelRef.current.fetchBboxAnnotations();
-        }
+        if (selectedVideo) fetchBboxAnnotations(selectedVideo.video_id);
     };
 
     const handlePositionChange = (time, frame, rate, totalDuration) => {
@@ -128,6 +127,39 @@ const LabelingInterface = () => {
         } catch (error) {
             console.error('Error fetching temporal annotations:', error);
             setTemporalAnnotations([]);
+        }
+    };
+
+    const fetchBboxAnnotations = async (videoId) => {
+        try {
+            const response = await fetch(`${basePath}/api/bbox-annotations/${videoId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setBoundingBoxes(data);
+            }
+        } catch (error) {
+            console.error('Error fetching bbox annotations:', error);
+            setBoundingBoxes([]);
+        }
+    };
+
+    const handleDeleteAnnotation = async (annotationId) => {
+        if (!window.confirm('Delete this annotation?')) return;
+        try {
+            const response = await fetch(`${basePath}/api/annotations/${annotationId}`, { method: 'DELETE' });
+            if (response.ok && selectedVideo) fetchTemporalAnnotations(selectedVideo.video_id);
+        } catch (error) {
+            console.error('Error deleting annotation:', error);
+        }
+    };
+
+    const handleDeleteBbox = async (bboxId) => {
+        if (!window.confirm('Delete this bounding box?')) return;
+        try {
+            const response = await fetch(`${basePath}/api/delete-bbox/${bboxId}`);
+            if (response.ok) setBoundingBoxes(prev => prev.filter(b => b.bbox_id !== bboxId));
+        } catch (error) {
+            console.error('Error deleting bbox:', error);
         }
     };
 
@@ -201,7 +233,7 @@ const LabelingInterface = () => {
                     )}
 
                     {selectedVideo ? (
-                        <div className="video-player-container" ref={videoContainerRef} style={{ position: 'relative' }}>
+                        <div className="video-player-wrapper" ref={videoContainerRef}>
                             <VideoPlayer
                                 videoUrl={`${basePath}/api/video-file/${selectedVideo.video_id}`}
                                 onPositionChange={handlePositionChange}
@@ -260,6 +292,70 @@ const LabelingInterface = () => {
                         <p>No video selected.</p>
                     )}
                 </div>
+
+                {/* Annotations Viewer Toggle Tab */}
+                <div
+                    className={`viewer-tab ${viewerOpen ? 'open' : ''}`}
+                    onClick={() => setViewerOpen(!viewerOpen)}
+                    title={viewerOpen ? 'Hide annotations' : 'Show annotations'}
+                >
+                    <span className="viewer-tab-label">Annotations</span>
+                    <span className="viewer-tab-caret">{viewerOpen ? '\u203A' : '\u2039'}</span>
+                </div>
+
+                {/* Collapsible Annotations Viewer */}
+                {viewerOpen && (
+                    <div className="annotations-viewer">
+                        <div className="viewer-header">
+                            <h3>Annotations</h3>
+                            <span className="viewer-counts">
+                                {temporalAnnotations.length + boundingBoxes.length} total
+                            </span>
+                        </div>
+
+                        <div className="viewer-section">
+                            <h4>Labels ({temporalAnnotations.length})</h4>
+                            {temporalAnnotations.length > 0 ? (
+                                <ul className="viewer-list">
+                                    {temporalAnnotations.map(anno => (
+                                        <li key={anno.annotation_id} className="viewer-item">
+                                            <div className="viewer-item-info">
+                                                <span className="viewer-item-label">{anno.label}</span>
+                                                {anno.frame_index != null ? (
+                                                    <span className="viewer-item-meta">Frame {anno.frame_index}</span>
+                                                ) : anno.start_frame != null && anno.end_frame != null ? (
+                                                    <span className="viewer-item-meta">Frames {anno.start_frame}-{anno.end_frame}</span>
+                                                ) : null}
+                                            </div>
+                                            <button className="viewer-delete" onClick={() => handleDeleteAnnotation(anno.annotation_id)}>&times;</button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="viewer-empty">None yet</p>
+                            )}
+                        </div>
+
+                        <div className="viewer-section">
+                            <h4>Bounding Boxes ({boundingBoxes.length})</h4>
+                            {boundingBoxes.length > 0 ? (
+                                <ul className="viewer-list">
+                                    {boundingBoxes.map(bbox => (
+                                        <li key={bbox.bbox_id} className="viewer-item">
+                                            <div className="viewer-item-info">
+                                                <span className="viewer-item-label">{bbox.part_label}</span>
+                                                <span className="viewer-item-meta">Frame {bbox.frame_index}</span>
+                                            </div>
+                                            <button className="viewer-delete" onClick={() => handleDeleteBbox(bbox.bbox_id)}>&times;</button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="viewer-empty">None yet</p>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

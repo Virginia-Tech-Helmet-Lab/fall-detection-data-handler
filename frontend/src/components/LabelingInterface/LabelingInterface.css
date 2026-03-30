@@ -12,39 +12,40 @@
     display: flex;
     flex: 1;
     min-height: 0;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
     overflow: hidden;
 }
 
+/* Left sidebar — video list */
 .video-list-panel {
     width: 280px;
     min-width: 280px;
+    min-height: 0;
     padding: 0;
     border-right: 1px solid #e0e0e0;
     overflow-y: auto;
     background: #fafafa;
-    height: 100%;
 }
 
+/* Center panel — video player */
 .video-display-panel {
     flex: 1;
-    padding: 12px 20px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    overflow-y: auto;
-    height: 100%;
+    overflow: hidden;
+    padding: 8px 16px;
 }
 
+/* Right sidebar — annotations */
 .annotation-panel-container {
     width: 350px;
     min-width: 350px;
+    min-height: 0;
     padding: 10px;
     border-left: 1px solid #e0e0e0;
     overflow-y: auto;
-    height: 100%;
+    overflow-x: hidden;
     box-sizing: border-box;
 }
 
@@ -67,14 +68,14 @@
 
 /* Video Navigation Bar */
 .video-nav-bar {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 16px;
     width: 100%;
     max-width: 900px;
-    padding: 8px 0;
-    margin-bottom: 4px;
+    padding: 6px 0;
 }
 
 .nav-btn {
@@ -108,19 +109,20 @@
     text-align: center;
 }
 
-/* Video Player Container */
-.video-player-container {
-    margin-bottom: 20px;
+/* Video Player Wrapper — fills remaining space in center panel */
+.video-player-wrapper {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     width: 100%;
     max-width: 900px;
-    background-color: #f5f5f5;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
 }
 
-/* Hotkey Footer */
+/* Hotkey Footer — pinned at bottom of wrapper */
 .hotkey-footer {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -128,8 +130,6 @@
     padding: 8px 16px;
     background: #1e1e1e;
     border-radius: 0 0 8px 8px;
-    margin: -15px -15px 0 -15px;
-    margin-top: 0;
 }
 
 .hotkey-group {
@@ -159,7 +159,6 @@ kbd {
     box-shadow: 0 1px 0 #555;
 }
 
-/* Bbox indicator */
 .bbox-save-indicator {
     position: fixed;
     bottom: 50px;
@@ -169,5 +168,166 @@ kbd {
     padding: 10px 15px;
     border-radius: 4px;
     z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Annotations Viewer Toggle Tab */
+.viewer-tab {
+    width: 24px;
+    min-width: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    border-left: 1px solid #ddd;
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.viewer-tab:hover {
+    background: #e0e0e0;
+}
+
+.viewer-tab-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #666;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.viewer-tab-caret {
+    font-size: 1.2rem;
+    color: #999;
+    margin-top: 8px;
+}
+
+.viewer-tab.open {
+    background: #1e1e1e;
+    border-left-color: #333;
+}
+
+.viewer-tab.open .viewer-tab-label {
+    color: #aaa;
+}
+
+.viewer-tab.open .viewer-tab-caret {
+    color: #ccc;
+}
+
+/* Annotations Viewer Panel */
+.annotations-viewer {
+    width: 280px;
+    min-width: 280px;
+    background: #1a1a1a;
+    color: #ddd;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+    box-sizing: border-box;
+    border-left: 1px solid #333;
+}
+
+.viewer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+}
+
+.viewer-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #eee;
+    border: none;
+    padding: 0;
+}
+
+.viewer-counts {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.viewer-section {
+    margin-bottom: 16px;
+}
+
+.viewer-section h4 {
+    font-size: 0.8rem;
+    color: #999;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.viewer-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.viewer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    background: #252525;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    gap: 6px;
+}
+
+.viewer-item:hover {
+    background: #2a2a2a;
+}
+
+.viewer-item-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.viewer-item-label {
+    display: inline-block;
+    padding: 1px 6px;
+    background: #660000;
+    color: white;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-right: 6px;
+}
+
+.viewer-item-meta {
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.viewer-delete {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.viewer-delete:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.viewer-empty {
+    font-size: 0.8rem;
+    color: #555;
+    font-style: italic;
+    margin: 4px 0;
 }

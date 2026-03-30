@@ -6,15 +6,6 @@
     pointer-events: none;
   }
 
-/* Panel organization */
-.annotation-panel {
-  height: 100%;
-  padding: 15px;
-  overflow-y: auto;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-}
-
 .annotation-section {
   margin-bottom: 15px;
   border: 1px solid #e0e0e0;

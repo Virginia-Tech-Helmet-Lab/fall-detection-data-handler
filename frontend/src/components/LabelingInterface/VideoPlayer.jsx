@@ -352,7 +352,7 @@ const VideoPlayer = ({ videoUrl, onPositionChange }) => {
 
     return (
         <div className="video-player-container" style={{ position: 'relative' }} ref={wrapperRef}>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                 {error ? (
                     <div className="error-message">{error}</div>
                 ) : (
