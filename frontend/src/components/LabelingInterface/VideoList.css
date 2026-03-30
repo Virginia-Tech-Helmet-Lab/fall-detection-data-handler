@@ -160,9 +160,10 @@
     letter-spacing: 0.5px;
 }
 
-.status-badge.pending {
-    background: #f0f0f0;
-    color: #666;
+.status-badge.pending,
+.status-badge.ready {
+    background: #e3f2fd;
+    color: #1565c0;
 }
 
 .status-badge.in_progress {

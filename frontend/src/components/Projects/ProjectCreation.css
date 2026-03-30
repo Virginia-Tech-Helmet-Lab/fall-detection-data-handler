@@ -100,6 +100,76 @@ textarea.form-control {
     gap: 12px;
 }
 
+.form-hint {
+    font-size: 0.8rem;
+    color: #888;
+    margin: -4px 0 8px 0;
+}
+
+/* Template Selector */
+.template-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.template-card {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fafafa;
+}
+
+.template-card:hover {
+    border-color: #adb5bd;
+    background: #f0f0f0;
+}
+
+.template-card.selected {
+    border-color: #660000;
+    background: #fdf5f5;
+}
+
+.template-card h4 {
+    margin: 0 0 4px 0;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.template-card p {
+    margin: 0 0 10px 0;
+    font-size: 0.8rem;
+    color: #777;
+}
+
+.template-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.template-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    background: #e9ecef;
+    color: #495057;
+}
+
+.template-pill.event {
+    background: #660000;
+    color: white;
+}
+
+.template-pill.more {
+    background: transparent;
+    color: #999;
+    font-style: italic;
+}
+
 /* Wizard Actions */
 .wizard-actions {
     display: flex;
@@ -188,5 +258,9 @@ textarea.form-control {
     .btn {
         width: 100%;
         justify-content: center;
+    }
+
+    .template-selector {
+        grid-template-columns: 1fr;
     }
 }

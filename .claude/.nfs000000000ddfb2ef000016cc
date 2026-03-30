@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /projects/helmetlab1/Label-Software/frontend/src/components -name \"*.js\" -type f -exec wc -l {} +)",
+      "Bash(ls -la /projects/helmetlab1/Label-Software/backend/*.py)",
+      "Bash(grep -E \"\\\\.\\(sh|bat|toml|cfg|yml|yaml|json|md\\)$|Dockerfile|Makefile\")",
+      "Bash(ls -la /projects/helmetlab1/Label-Software/frontend/public/logo*)",
+      "Bash(ls -la /projects/helmetlab1/Label-Software/frontend/src/logo*)",
+      "Bash(ls frontend/src/components/LabelingInterface/*.js)",
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(npm install:*)",
+      "Read(//usr/local/bin/**)",
+      "Bash(module avail:*)",
+      "Bash(cd:*)",
+      "Bash(for port:*)",
+      "Bash(do ss:*)",
+      "Bash(grep -q \":$port \")",
+      "Bash(echo \"$port: IN USE\")",
+      "Bash(echo \"$port: FREE\")",
+      "Bash(done)",
+      "Bash(npx vite:*)",
+      "Bash(grep -r \"VITE_GOOGLE\\\\|VITE_DROPBOX\" /projects/helmetlab1/Label-Software/frontend --include=*.js --include=*.jsx --include=*.env*)",
+      "Bash(grep -rn \"google-drive\\\\|dropbox\\\\|UrlImport\\\\|GoogleDrive\\\\|Dropbox\" /projects/helmetlab1/Label-Software/frontend/src/components --include=*.jsx --include=*.js)",
+      "Bash(ls:*)",
+      "Bash(wc:*)"
+    ]
+  }
+}

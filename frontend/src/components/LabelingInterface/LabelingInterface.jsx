@@ -7,8 +7,6 @@ import AnnotationPanel from './AnnotationPanel';
 import ProgressTracker from './ProgressTracker';
 import VideoQueue from './VideoQueue';
 import './LabelingInterface.css';
-import { useNavigate } from 'react-router-dom';
-import { FaClipboardCheck } from 'react-icons/fa';
 import { useProject } from '../../contexts/ProjectContext';
 
 const LabelingInterface = () => {
@@ -36,23 +34,7 @@ const LabelingInterface = () => {
     // Create a ref for the video container
     const videoContainerRef = useRef(null);
     
-    // Add navigate hook
-    const navigate = useNavigate();
-    
-    // Add this to existing state
-    const [hasAnnotations, setHasAnnotations] = useState(false);
-    
-    // Add this effect to check if annotations exist
-    useEffect(() => {
-        if (selectedVideo && 
-            (temporalAnnotations.length > 0 || boundingBoxes.length > 0)) {
-            setHasAnnotations(true);
-        } else {
-            setHasAnnotations(false);
-        }
-    }, [selectedVideo, temporalAnnotations, boundingBoxes]);
-    
-    // Add a function to update dimensions
+// Add a function to update dimensions
     const updateVideoDimensions = () => {
         if (videoContainerRef.current) {
             const videoElement = videoContainerRef.current.querySelector('video');
@@ -118,14 +100,7 @@ const LabelingInterface = () => {
         setBoundingBoxActive(isActive);
         setSelectedLabel(label);
     };
-    
-    // Add this function to handle transition to review
-    const handleReviewTransition = () => {
-        if (window.confirm('Are you ready to review your annotations? You can still return to edit them later.')) {
-            navigate('/review');
-        }
-    };
-    
+
     // Add this function to fetch temporal annotations
     const fetchTemporalAnnotations = async (videoId) => {
         try {
@@ -241,15 +216,6 @@ const LabelingInterface = () => {
                     <p>No video selected.</p>
                 )}
             </div>
-            {hasAnnotations && (
-                <button 
-                    className="floating-review-button"
-                    onClick={handleReviewTransition}
-                    title="Review your annotations"
-                >
-                    <FaClipboardCheck /> Review
-                </button>
-            )}
         </div>
     );
 };

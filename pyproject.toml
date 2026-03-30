@@ -19,6 +19,7 @@ dependencies = [
 [project.scripts]
 label-dev = "label_software.cli:dev"
 label-serve = "label_software.cli:serve"
+label = "label_software.cli:serve"
 label-build = "label_software.cli:build"
 
 [build-system]

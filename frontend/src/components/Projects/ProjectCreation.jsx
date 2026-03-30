@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { FaArrowLeft, FaTimes } from 'react-icons/fa';
 import { useProject } from '../../contexts/ProjectContext';
+import { LABEL_TEMPLATES } from '../../data/labelTemplates';
 import './ProjectCreation.css';
 
 const ProjectCreation = () => {
@@ -11,6 +12,8 @@ const ProjectCreation = () => {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [temporalTemplate, setTemporalTemplate] = useState('fall_detection');
+    const [bboxTemplate, setBboxTemplate] = useState('fall_detection');
     const [projectData, setProjectData] = useState({
         name: '',
         description: '',
@@ -28,9 +31,19 @@ const ProjectCreation = () => {
         }
         setError(null);
 
+        const tTemplate = LABEL_TEMPLATES.find(t => t.id === temporalTemplate);
+        const bTemplate = LABEL_TEMPLATES.find(t => t.id === bboxTemplate);
+        const payload = {
+            ...projectData,
+            annotation_schema: {
+                event_types: tTemplate?.schema.event_types || [],
+                body_parts: bTemplate?.schema.body_parts || [],
+            },
+        };
+
         try {
             setLoading(true);
-            await apiClient.post('/api/projects', projectData);
+            await apiClient.post('/api/projects', payload);
             await fetchProjects();
             navigate('/projects');
         } catch (err) {
@@ -40,6 +53,9 @@ const ProjectCreation = () => {
             setLoading(false);
         }
     };
+
+    const temporalTemplates = LABEL_TEMPLATES.filter(t => t.schema.event_types.length > 0 || t.id === 'custom');
+    const bboxTemplates = LABEL_TEMPLATES.filter(t => t.schema.body_parts.length > 0 || t.id === 'custom');
 
     return (
         <div className="project-creation">
@@ -88,6 +104,60 @@ const ProjectCreation = () => {
                                 className="form-control"
                                 min={new Date().toISOString().split('T')[0]}
                             />
+                        </div>
+
+                        <div className="template-sections">
+                            <div className="form-group">
+                                <label>Temporal Label Template</label>
+                                <p className="form-hint">Event types for marking time-based annotations</p>
+                                <div className="template-selector">
+                                    {temporalTemplates.map(template => (
+                                        <div
+                                            key={template.id}
+                                            className={`template-card ${temporalTemplate === template.id ? 'selected' : ''}`}
+                                            onClick={() => setTemporalTemplate(template.id)}
+                                        >
+                                            <h4>{template.name}</h4>
+                                            <div className="template-labels">
+                                                {template.schema.event_types.length > 0 ? (
+                                                    template.schema.event_types.map(et => (
+                                                        <span key={et} className="template-pill event">{et}</span>
+                                                    ))
+                                                ) : (
+                                                    <span className="template-pill more">Empty — add your own</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Bounding Box Label Template</label>
+                                <p className="form-hint">Body part labels for spatial annotations</p>
+                                <div className="template-selector">
+                                    {bboxTemplates.map(template => (
+                                        <div
+                                            key={template.id}
+                                            className={`template-card ${bboxTemplate === template.id ? 'selected' : ''}`}
+                                            onClick={() => setBboxTemplate(template.id)}
+                                        >
+                                            <h4>{template.name}</h4>
+                                            <div className="template-labels">
+                                                {template.schema.body_parts.slice(0, 6).map(bp => (
+                                                    <span key={bp} className="template-pill">{bp}</span>
+                                                ))}
+                                                {template.schema.body_parts.length > 6 && (
+                                                    <span className="template-pill more">+{template.schema.body_parts.length - 6} more</span>
+                                                )}
+                                                {template.schema.body_parts.length === 0 && (
+                                                    <span className="template-pill more">Empty — add your own</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

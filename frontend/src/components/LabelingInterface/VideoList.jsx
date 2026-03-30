@@ -74,8 +74,8 @@ const VideoList = ({ onVideoSelect, projectId }) => {
                                 </div>
                             </div>
                             <div className="video-status">
-                                <span className={`status-badge ${video.status || 'pending'}`}>
-                                    {video.status || 'Pending'}
+                                <span className={`status-badge ${video.is_completed ? 'completed' : video.status === 'confirmed' ? 'completed' : 'ready'}`}>
+                                    {video.is_completed ? 'Done' : video.status === 'confirmed' ? 'Confirmed' : 'Ready'}
                                 </span>
                             </div>
                         </button>

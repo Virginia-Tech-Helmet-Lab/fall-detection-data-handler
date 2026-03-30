@@ -1,10 +1,12 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { basePath } from '../../api/client';
 import { useProject } from '../../contexts/ProjectContext';
+import { LABEL_TEMPLATES } from '../../data/labelTemplates';
 import './AnnotationPanel.css';
 
-const DEFAULT_EVENT_TYPES = ['Fall'];
-const DEFAULT_BODY_PARTS = ['head', 'shoulder', 'elbow', 'wrist', 'hip', 'knee', 'ankle'];
+const fallDetectionTemplate = LABEL_TEMPLATES.find(t => t.id === 'fall_detection');
+const DEFAULT_EVENT_TYPES = fallDetectionTemplate.schema.event_types;
+const DEFAULT_BODY_PARTS = fallDetectionTemplate.schema.body_parts;
 
 const AnnotationPanel = forwardRef(({
   videoId,
@@ -35,6 +37,7 @@ const AnnotationPanel = forwardRef(({
   const [showAddBodyPart, setShowAddBodyPart] = useState(false);
   const [newEventType, setNewEventType] = useState('');
   const [newBodyPart, setNewBodyPart] = useState('');
+  const [showTemplateLoader, setShowTemplateLoader] = useState(false);
 
   // States for temporal annotation
   const [temporalAnnotations, setTemporalAnnotations] = useState([]);
@@ -52,13 +55,18 @@ const AnnotationPanel = forwardRef(({
   useEffect(() => {
     if (currentProject?.annotation_schema) {
       const schema = currentProject.annotation_schema;
-      if (schema.event_types && schema.event_types.length > 0) {
+      if (schema.event_types) {
         setEventTypes(schema.event_types);
       }
-      if (schema.body_parts && schema.body_parts.length > 0) {
+      if (schema.body_parts) {
         setBodyParts(schema.body_parts);
-        setSelectedBodyPart(schema.body_parts[0]);
+        if (schema.body_parts.length > 0) {
+          setSelectedBodyPart(schema.body_parts[0]);
+        }
       }
+    } else {
+      setEventTypes(DEFAULT_EVENT_TYPES);
+      setBodyParts(DEFAULT_BODY_PARTS);
     }
   }, [currentProject?.project_id]);
 
@@ -96,6 +104,31 @@ const AnnotationPanel = forwardRef(({
     persistSchema(eventTypes, updated);
     setNewBodyPart('');
     setShowAddBodyPart(false);
+  };
+
+  const [templateTarget, setTemplateTarget] = useState(null); // { template, target: 'temporal'|'bbox'|'both' }
+
+  const applyTemplate = (template, target) => {
+    const label = target === 'both' ? 'temporal and bounding box labels'
+      : target === 'temporal' ? 'temporal labels' : 'bounding box labels';
+    if (!window.confirm(`Replace ${label} with "${template.name}"? Existing annotations won't be affected.`)) return;
+
+    let newEventTypes = eventTypes;
+    let newBodyParts = bodyParts;
+    if (target === 'temporal' || target === 'both') {
+      newEventTypes = template.schema.event_types;
+      setEventTypes(newEventTypes);
+    }
+    if (target === 'bbox' || target === 'both') {
+      newBodyParts = template.schema.body_parts;
+      setBodyParts(newBodyParts);
+      if (newBodyParts.length > 0) {
+        setSelectedBodyPart(newBodyParts[0]);
+      }
+    }
+    persistSchema(newEventTypes, newBodyParts);
+    setShowTemplateLoader(false);
+    setTemplateTarget(null);
   };
 
   // Fetch annotations when video changes
@@ -254,6 +287,48 @@ const AnnotationPanel = forwardRef(({
           placeholder="Your name (signs your annotations)"
           className="annotator-name-input"
         />
+      </div>
+
+      {/* Template Loader */}
+      <div className="template-loader-section">
+        <button
+          className="load-template-btn"
+          onClick={() => { setShowTemplateLoader(!showTemplateLoader); setTemplateTarget(null); }}
+          type="button"
+        >
+          {showTemplateLoader ? 'Cancel' : 'Load Template'}
+        </button>
+        {showTemplateLoader && !templateTarget && (
+          <div className="template-loader">
+            {LABEL_TEMPLATES.map(template => (
+              <button
+                key={template.id}
+                className="template-loader-item"
+                onClick={() => setTemplateTarget(template)}
+              >
+                <strong>{template.name}</strong>
+                <span>{template.description}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {showTemplateLoader && templateTarget && (
+          <div className="template-loader">
+            <div className="template-apply-header">Apply "{templateTarget.name}" to:</div>
+            <button className="template-loader-item" onClick={() => applyTemplate(templateTarget, 'temporal')}>
+              <strong>Temporal Labels</strong>
+              <span>{templateTarget.schema.event_types.length > 0 ? templateTarget.schema.event_types.join(', ') : 'Empty'}</span>
+            </button>
+            <button className="template-loader-item" onClick={() => applyTemplate(templateTarget, 'bbox')}>
+              <strong>Bounding Box Labels</strong>
+              <span>{templateTarget.schema.body_parts.length > 0 ? templateTarget.schema.body_parts.slice(0, 5).join(', ') + (templateTarget.schema.body_parts.length > 5 ? '...' : '') : 'Empty'}</span>
+            </button>
+            <button className="template-loader-item apply-both" onClick={() => applyTemplate(templateTarget, 'both')}>
+              <strong>Both</strong>
+              <span>Apply all labels from this template</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Current Frame/Time Information */}
