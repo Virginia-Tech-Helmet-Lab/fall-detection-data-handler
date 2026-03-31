@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaSave, FaArrowLeft, FaTrash } from 'react-icons/fa';
+import { FaSave, FaArrowLeft, FaTrash, FaDatabase, FaUnlink } from 'react-icons/fa';
 import { useProject } from '../../contexts/ProjectContext';
 import { LABEL_TEMPLATES } from '../../data/labelTemplates';
+import apiClient from '../../api/client';
 import './ProjectSettings.css';
 
 const ProjectSettings = () => {
@@ -15,6 +16,8 @@ const ProjectSettings = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [linkedDatasets, setLinkedDatasets] = useState([]);
+    const [unlinking, setUnlinking] = useState(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -53,6 +56,35 @@ const ProjectSettings = () => {
             setMessage({ type: 'error', text: 'Error loading project' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchLinkedDatasets = async () => {
+        try {
+            const response = await apiClient.get(`/api/projects/${projectId}/datasets`);
+            setLinkedDatasets(response.data);
+        } catch (error) {
+            console.error('Error fetching linked datasets:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (projectId) fetchLinkedDatasets();
+    }, [projectId]);
+
+    const handleUnlinkDataset = async (datasetId, datasetName) => {
+        if (!window.confirm(`Unlink "${datasetName}" from this project? This will remove all its videos (only allowed if they have no annotations).`)) return;
+        setUnlinking(datasetId);
+        try {
+            await apiClient.delete(`/api/projects/${projectId}/datasets/${datasetId}`);
+            setMessage({ type: 'success', text: `Unlinked "${datasetName}" successfully` });
+            fetchLinkedDatasets();
+            loadProject();
+            setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+        } catch (err) {
+            setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to unlink dataset' });
+        } finally {
+            setUnlinking(null);
         }
     };
 
@@ -276,6 +308,36 @@ const ProjectSettings = () => {
                             <button onClick={() => { addLabel('body_parts', newBodyPart); setNewBodyPart(''); }}>Add</button>
                         </div>
                     </div>
+                </section>
+
+                {/* Linked Datasets */}
+                <section className="settings-section">
+                    <h2><FaDatabase style={{ marginRight: 8 }} />Linked Datasets</h2>
+                    {linkedDatasets.length > 0 ? (
+                        <div className="datasets-list">
+                            {linkedDatasets.map(ds => (
+                                <div key={ds.dataset_id} className="dataset-row">
+                                    <div className="dataset-info">
+                                        <strong>{ds.dataset_name}</strong>
+                                        <span className="dataset-meta">{ds.video_count} videos</span>
+                                        {ds.has_annotations && (
+                                            <span className="dataset-badge annotated">Has annotations</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        className="unlink-btn"
+                                        onClick={() => handleUnlinkDataset(ds.dataset_id, ds.dataset_name)}
+                                        disabled={ds.has_annotations || unlinking === ds.dataset_id}
+                                        title={ds.has_annotations ? 'Cannot unlink: videos have annotations' : 'Remove this dataset from the project'}
+                                    >
+                                        <FaUnlink /> {unlinking === ds.dataset_id ? 'Removing...' : 'Unlink'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p style={{ color: '#888', fontSize: '0.9rem' }}>No datasets linked. Import from the Data Catalog.</p>
+                    )}
                 </section>
 
                 {/* Danger Zone */}

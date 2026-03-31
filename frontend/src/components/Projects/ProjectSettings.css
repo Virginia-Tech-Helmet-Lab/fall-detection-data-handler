@@ -286,6 +286,80 @@
     background: #218838;
 }
 
+/* Linked Datasets */
+.datasets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dataset-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    gap: 12px;
+}
+
+.dataset-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.dataset-info strong {
+    color: #333;
+}
+
+.dataset-meta {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.dataset-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.dataset-badge.annotated {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.unlink-btn {
+    padding: 6px 14px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #666;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+
+.unlink-btn:hover:not(:disabled) {
+    background: #fff5f5;
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.unlink-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* Danger Zone */
 .danger-zone {
     border: 2px solid #ffdddd;

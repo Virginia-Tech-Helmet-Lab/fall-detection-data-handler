@@ -154,3 +154,76 @@ def get_project_statistics(project_id: int, db: Session = Depends(get_db)):
         'total_bbox_annotations': b_count,
         'completion_percentage': round((completed / len(videos)) * 100, 1) if videos else 0,
     }
+
+
+@router.get("/{project_id}/datasets")
+def list_project_datasets(project_id: int, db: Session = Depends(get_db)):
+    """List distinct catalog datasets linked to this project via its videos."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, detail="Project not found")
+
+    # Group videos by catalog_dataset_id
+    videos = db.query(Video).filter_by(project_id=project_id).filter(Video.catalog_dataset_id.isnot(None)).all()
+    datasets = {}
+    for v in videos:
+        ds_id = v.catalog_dataset_id
+        if ds_id not in datasets:
+            datasets[ds_id] = {'dataset_id': ds_id, 'video_count': 0, 'has_annotations': False}
+        datasets[ds_id]['video_count'] += 1
+        # Check for annotations on this video
+        t = db.query(TemporalAnnotation).filter_by(video_id=v.video_id).count()
+        b = db.query(BoundingBoxAnnotation).filter_by(video_id=v.video_id).count()
+        if t > 0 or b > 0:
+            datasets[ds_id]['has_annotations'] = True
+
+    # Enrich with catalog names
+    try:
+        from ..services import catalog as catalog_svc
+        for ds_id, info in datasets.items():
+            ds = catalog_svc.get_dataset(ds_id)
+            info['dataset_name'] = ds['name'] if ds else f'Dataset {ds_id}'
+    except Exception:
+        for ds_id, info in datasets.items():
+            info['dataset_name'] = f'Dataset {ds_id}'
+
+    return list(datasets.values())
+
+
+@router.delete("/{project_id}/datasets/{dataset_id}")
+def unlink_dataset(project_id: int, dataset_id: int, db: Session = Depends(get_db)):
+    """Remove all videos from a specific catalog dataset, only if none have annotations."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, detail="Project not found")
+
+    videos = db.query(Video).filter_by(project_id=project_id, catalog_dataset_id=dataset_id).all()
+    if not videos:
+        raise HTTPException(404, detail="No videos from this dataset in the project")
+
+    # Safety check — refuse if any video has annotations
+    annotated = []
+    for v in videos:
+        t = db.query(TemporalAnnotation).filter_by(video_id=v.video_id).count()
+        b = db.query(BoundingBoxAnnotation).filter_by(video_id=v.video_id).count()
+        if t > 0 or b > 0:
+            annotated.append(v.filename)
+
+    if annotated:
+        raise HTTPException(400, detail=f"Cannot unlink: {len(annotated)} video(s) have annotations. Delete annotations first.")
+
+    # Safe to remove
+    count = len(videos)
+    for v in videos:
+        db.delete(v)
+
+    # Update project metadata
+    project.total_videos = db.query(Video).filter_by(project_id=project_id).count() - count
+    remaining = db.query(Video).filter_by(project_id=project_id).filter(Video.catalog_dataset_id != dataset_id).first()
+    if not remaining:
+        project.catalog_dataset_id = None
+        project.catalog_dataset_name = None
+    project.last_activity = datetime.utcnow()
+
+    db.commit()
+    return {'success': True, 'removed': count, 'dataset_id': dataset_id}
